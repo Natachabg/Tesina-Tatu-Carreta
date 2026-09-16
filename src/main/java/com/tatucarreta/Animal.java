@@ -91,12 +91,7 @@ public class Animal {
 
     // Esto es lo que verá el ComboBox
     @Override
-    public String toString() {
-        return idAnimal
-                + " - "
-                + nombreVulgar
-                + " (Cantidad: "
-                + cantidadActual
-                + ")";
-    }
+public String toString() {
+    return nombreVulgar;
+}
 }

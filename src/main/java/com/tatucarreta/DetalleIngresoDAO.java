@@ -3,10 +3,15 @@ package com.tatucarreta;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 
 public class DetalleIngresoDAO {
+
+    // =========================
+    // AGREGAR
+    // =========================
 
     public void agregar(DetalleIngreso detalle) {
 
@@ -53,10 +58,21 @@ public class DetalleIngresoDAO {
                     detalle.getEdad()
             );
 
-            sentencia.setDouble(
-                    6,
-                    detalle.getPeso()
-            );
+            // Peso: puede ser NULL
+            if (detalle.getPeso() == null) {
+
+                sentencia.setNull(
+                        6,
+                        Types.REAL
+                );
+
+            } else {
+
+                sentencia.setDouble(
+                        6,
+                        detalle.getPeso()
+                );
+            }
 
             sentencia.setString(
                     7,
@@ -84,9 +100,15 @@ public class DetalleIngresoDAO {
         }
     }
 
+
+    // =========================
+    // LISTAR POR INGRESO
+    // =========================
+
     public List<DetalleIngreso> listarPorIngreso(int idIngreso) {
 
-        List<DetalleIngreso> detalles = new ArrayList<>();
+        List<DetalleIngreso> detalles =
+                new ArrayList<>();
 
         String sql = """
                 SELECT
@@ -122,32 +144,55 @@ public class DetalleIngresoDAO {
                             new DetalleIngreso();
 
                     detalle.setIdDetalle(
-                            resultado.getInt("id_detalle")
+                            resultado.getInt(
+                                    "id_detalle"
+                            )
                     );
 
                     detalle.setIdIngreso(
-                            resultado.getInt("id_ingreso")
+                            resultado.getInt(
+                                    "id_ingreso"
+                            )
                     );
 
                     detalle.setIdAnimal(
-                            resultado.getInt("id_animal")
+                            resultado.getInt(
+                                    "id_animal"
+                            )
                     );
 
                     detalle.setCantidad(
-                            resultado.getInt("cantidad")
+                            resultado.getInt(
+                                    "cantidad"
+                            )
                     );
 
                     detalle.setSexo(
-                            resultado.getString("sexo")
+                            resultado.getString(
+                                    "sexo"
+                            )
                     );
 
                     detalle.setEdad(
-                            resultado.getString("edad")
+                            resultado.getString(
+                                    "edad"
+                            )
                     );
 
-                    detalle.setPeso(
-                            resultado.getDouble("peso")
-                    );
+                    // Si el peso es NULL, mantenemos null
+                    double peso =
+                            resultado.getDouble(
+                                    "peso"
+                            );
+
+                    if (resultado.wasNull()) {
+
+                        detalle.setPeso(null);
+
+                    } else {
+
+                        detalle.setPeso(peso);
+                    }
 
                     detalle.setEstadoIngreso(
                             resultado.getString(
@@ -176,6 +221,11 @@ public class DetalleIngresoDAO {
 
         return detalles;
     }
+
+
+    // =========================
+    // MODIFICAR
+    // =========================
 
     public void modificar(DetalleIngreso detalle) {
 
@@ -216,10 +266,21 @@ public class DetalleIngresoDAO {
                     detalle.getEdad()
             );
 
-            sentencia.setDouble(
-                    5,
-                    detalle.getPeso()
-            );
+            // Peso: puede ser NULL
+            if (detalle.getPeso() == null) {
+
+                sentencia.setNull(
+                        5,
+                        Types.REAL
+                );
+
+            } else {
+
+                sentencia.setDouble(
+                        5,
+                        detalle.getPeso()
+                );
+            }
 
             sentencia.setString(
                     6,
@@ -252,6 +313,11 @@ public class DetalleIngresoDAO {
         }
     }
 
+
+    // =========================
+    // ELIMINAR
+    // =========================
+
     public void eliminar(int idDetalle) {
 
         String sql = """
@@ -282,5 +348,132 @@ public class DetalleIngresoDAO {
 
             System.out.println(e.getMessage());
         }
+    }
+
+
+    // =========================
+    // BUSCAR DETALLE POR
+    // ANIMAL E INGRESO
+    // =========================
+
+    public DetalleIngreso buscarPorAnimalEIngreso(
+            int idAnimal,
+            int idIngreso) {
+
+        String sql = """
+                SELECT
+                    id_detalle,
+                    id_ingreso,
+                    id_animal,
+                    cantidad,
+                    sexo,
+                    edad,
+                    peso,
+                    estado_ingreso,
+                    observaciones
+                FROM detalle_ingreso
+                WHERE id_animal = ?
+                  AND id_ingreso = ?
+                LIMIT 1
+                """;
+
+        try (Connection conexion = ConexionSQLite.conectar();
+             PreparedStatement sentencia =
+                     conexion.prepareStatement(sql)) {
+
+            sentencia.setInt(
+                    1,
+                    idAnimal
+            );
+
+            sentencia.setInt(
+                    2,
+                    idIngreso
+            );
+
+            try (ResultSet resultado =
+                         sentencia.executeQuery()) {
+
+                if (resultado.next()) {
+
+                    DetalleIngreso detalle =
+                            new DetalleIngreso();
+
+                    detalle.setIdDetalle(
+                            resultado.getInt(
+                                    "id_detalle"
+                            )
+                    );
+
+                    detalle.setIdIngreso(
+                            resultado.getInt(
+                                    "id_ingreso"
+                            )
+                    );
+
+                    detalle.setIdAnimal(
+                            resultado.getInt(
+                                    "id_animal"
+                            )
+                    );
+
+                    detalle.setCantidad(
+                            resultado.getInt(
+                                    "cantidad"
+                            )
+                    );
+
+                    detalle.setSexo(
+                            resultado.getString(
+                                    "sexo"
+                            )
+                    );
+
+                    detalle.setEdad(
+                            resultado.getString(
+                                    "edad"
+                            )
+                    );
+
+                    double peso =
+                            resultado.getDouble(
+                                    "peso"
+                            );
+
+                    if (resultado.wasNull()) {
+
+                        detalle.setPeso(null);
+
+                    } else {
+
+                        detalle.setPeso(peso);
+                    }
+
+                    detalle.setEstadoIngreso(
+                            resultado.getString(
+                                    "estado_ingreso"
+                            )
+                    );
+
+                    detalle.setObservaciones(
+                            resultado.getString(
+                                    "observaciones"
+                            )
+                    );
+
+                    return detalle;
+                }
+            }
+
+        } catch (Exception e) {
+
+            System.out.println(
+                    "Error al buscar detalle de ingreso."
+            );
+
+            System.out.println(e.getMessage());
+        }
+
+        return null;
     }
 }

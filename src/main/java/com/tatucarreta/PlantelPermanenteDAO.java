@@ -94,8 +94,7 @@ public class PlantelPermanenteDAO {
 
 
     // =========================
-    // LISTAR CON NOMBRE
-    // DEL ANIMAL Y HABITÁCULO
+    // LISTAR
     // =========================
 
     public List<PlantelPermanente> listar() {
@@ -115,6 +114,7 @@ public class PlantelPermanenteDAO {
                     p.fecha_ingreso_plantel,
                     p.estado,
                     p.observaciones
+
                 FROM plantel_permanente p
 
                 INNER JOIN animales a
@@ -128,8 +128,10 @@ public class PlantelPermanenteDAO {
 
         try (Connection conexion =
                      ConexionSQLite.conectar();
+
              PreparedStatement sentencia =
                      conexion.prepareStatement(sql);
+
              ResultSet resultado =
                      sentencia.executeQuery()) {
 
@@ -139,27 +141,39 @@ public class PlantelPermanenteDAO {
                         new PlantelPermanente();
 
                 registro.setIdPlantel(
-                        resultado.getInt("id_plantel")
+                        resultado.getInt(
+                                "id_plantel"
+                        )
                 );
 
                 registro.setIdAnimal(
-                        resultado.getInt("id_animal")
+                        resultado.getInt(
+                                "id_animal"
+                        )
                 );
 
                 registro.setNombreAnimal(
-                        resultado.getString("nombre_animal")
+                        resultado.getString(
+                                "nombre_animal"
+                        )
                 );
 
                 registro.setCantidad(
-                        resultado.getInt("cantidad")
+                        resultado.getInt(
+                                "cantidad"
+                        )
                 );
 
                 registro.setTipoUbicacion(
-                        resultado.getString("tipo_ubicacion")
+                        resultado.getString(
+                                "tipo_ubicacion"
+                        )
                 );
 
                 int idHabitaculo =
-                        resultado.getInt("id_habitaculo");
+                        resultado.getInt(
+                                "id_habitaculo"
+                        );
 
                 if (resultado.wasNull()) {
 
@@ -185,11 +199,15 @@ public class PlantelPermanenteDAO {
                 );
 
                 registro.setEstado(
-                        resultado.getString("estado")
+                        resultado.getString(
+                                "estado"
+                        )
                 );
 
                 registro.setObservaciones(
-                        resultado.getString("observaciones")
+                        resultado.getString(
+                                "observaciones"
+                        )
                 );
 
                 plantel.add(registro);
@@ -209,10 +227,153 @@ public class PlantelPermanenteDAO {
 
 
     // =========================
+    // BUSCAR POR ANIMAL
+    // =========================
+
+    public List<PlantelPermanente> listarPorAnimal(
+            int idAnimal) {
+
+        List<PlantelPermanente> plantel =
+                new ArrayList<>();
+
+        String sql = """
+                SELECT
+                    p.id_plantel,
+                    p.id_animal,
+                    a.nombre_vulgar AS nombre_animal,
+                    p.cantidad,
+                    p.tipo_ubicacion,
+                    p.id_habitaculo,
+                    h.nombre AS nombre_habitaculo,
+                    p.fecha_ingreso_plantel,
+                    p.estado,
+                    p.observaciones
+
+                FROM plantel_permanente p
+
+                INNER JOIN animales a
+                    ON p.id_animal = a.id_animal
+
+                LEFT JOIN habitaculos h
+                    ON p.id_habitaculo = h.id_habitaculo
+
+                WHERE p.id_animal = ?
+
+                ORDER BY p.id_plantel
+                """;
+
+        try (Connection conexion =
+                     ConexionSQLite.conectar();
+
+             PreparedStatement sentencia =
+                     conexion.prepareStatement(sql)) {
+
+            sentencia.setInt(
+                    1,
+                    idAnimal
+            );
+
+            try (ResultSet resultado =
+                         sentencia.executeQuery()) {
+
+                while (resultado.next()) {
+
+                    PlantelPermanente registro =
+                            new PlantelPermanente();
+
+                    registro.setIdPlantel(
+                            resultado.getInt(
+                                    "id_plantel"
+                            )
+                    );
+
+                    registro.setIdAnimal(
+                            resultado.getInt(
+                                    "id_animal"
+                            )
+                    );
+
+                    registro.setNombreAnimal(
+                            resultado.getString(
+                                    "nombre_animal"
+                            )
+                    );
+
+                    registro.setCantidad(
+                            resultado.getInt(
+                                    "cantidad"
+                            )
+                    );
+
+                    registro.setTipoUbicacion(
+                            resultado.getString(
+                                    "tipo_ubicacion"
+                            )
+                    );
+
+                    int idHabitaculo =
+                            resultado.getInt(
+                                    "id_habitaculo"
+                            );
+
+                    if (resultado.wasNull()) {
+
+                        registro.setIdHabitaculo(null);
+
+                    } else {
+
+                        registro.setIdHabitaculo(
+                                idHabitaculo
+                        );
+                    }
+
+                    registro.setNombreHabitaculo(
+                            resultado.getString(
+                                    "nombre_habitaculo"
+                            )
+                    );
+
+                    registro.setFechaIngresoPlantel(
+                            resultado.getString(
+                                    "fecha_ingreso_plantel"
+                            )
+                    );
+
+                    registro.setEstado(
+                            resultado.getString(
+                                    "estado"
+                            )
+                    );
+
+                    registro.setObservaciones(
+                            resultado.getString(
+                                    "observaciones"
+                            )
+                    );
+
+                    plantel.add(registro);
+                }
+            }
+
+        } catch (Exception e) {
+
+            System.out.println(
+                    "Error al listar el plantel por animal."
+            );
+
+            System.out.println(e.getMessage());
+        }
+
+        return plantel;
+    }
+
+
+    // =========================
     // MODIFICAR
     // =========================
 
-    public void modificar(PlantelPermanente plantel) {
+    public void modificar(
+            PlantelPermanente plantel) {
 
         String sql = """
                 UPDATE plantel_permanente
@@ -224,11 +385,13 @@ public class PlantelPermanenteDAO {
                     fecha_ingreso_plantel = ?,
                     estado = ?,
                     observaciones = ?
+
                 WHERE id_plantel = ?
                 """;
 
         try (Connection conexion =
                      ConexionSQLite.conectar();
+
              PreparedStatement sentencia =
                      conexion.prepareStatement(sql)) {
 
@@ -303,7 +466,8 @@ public class PlantelPermanenteDAO {
     // ELIMINAR
     // =========================
 
-    public void eliminar(int idPlantel) {
+    public void eliminar(
+            int idPlantel) {
 
         String sql = """
                 DELETE FROM plantel_permanente
@@ -312,6 +476,7 @@ public class PlantelPermanenteDAO {
 
         try (Connection conexion =
                      ConexionSQLite.conectar();
+
              PreparedStatement sentencia =
                      conexion.prepareStatement(sql)) {
 

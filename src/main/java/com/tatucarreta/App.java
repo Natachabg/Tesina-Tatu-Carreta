@@ -8,23 +8,50 @@ public class App extends Application {
     @Override
     public void start(Stage escenario) {
 
-        // Crear las tablas necesarias si no existen
-        CrearTablas.crearTablaEspecies();
-        CrearTablas.crearTablaAnimales();
-        CrearTablas.crearTablaIngresos();
-        CrearTablas.crearTablaDetalleIngreso();
-        CrearTablas.crearTablaHabitaculos();
-        CrearTablas.crearTablaPlantelPermanente();
-        CrearTablas.crearTablaMovimientos();
-        CrearTablas.crearTablaIdentificaciones();
-        CrearTablas.crearTablaUsuarios();
+        // =========================
+        // CREAR TABLAS
+        // =========================
 
-        // Abrir Login
-        VentanaLogin ventanaLogin = new VentanaLogin();
+        CrearTablas.crearTablaEspecies();
+
+        CrearTablas.crearTablaAnimales();
+
+        CrearTablas.crearTablaIngresos();
+
+        CrearTablas.crearTablaDetalleIngreso();
+
+        CrearTablas.crearTablaHabitaculos();
+
+        CrearTablas.crearTablaPlantelPermanente();
+
+// Actualizar Plantel Permanente para permitir carga inicial
+CrearTablas.actualizarTablaPlantelPermanente();
+
+CrearTablas.crearTablaMovimientos();
+
+// Actualizar movimientos para trabajar con id_detalle
+CrearTablas.actualizarTablaMovimientos();
+
+// Agregar referencia opcional al Plantel Permanente
+CrearTablas.actualizarTablaMovimientosPlantel();
+
+CrearTablas.crearTablaIdentificaciones();
+
+CrearTablas.crearTablaUsuarios();
+
+        // =========================
+        // ABRIR LOGIN
+        // =========================
+
+        VentanaLogin ventanaLogin =
+                new VentanaLogin();
+
         ventanaLogin.mostrar(escenario);
     }
 
+
     public static void main(String[] args) {
+
         launch(args);
     }
 }
