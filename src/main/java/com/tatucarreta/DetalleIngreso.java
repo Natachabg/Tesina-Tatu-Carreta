@@ -8,7 +8,7 @@ public class DetalleIngreso {
     private int cantidad;
     private String sexo;
     private String edad;
-    private double peso;
+    private Double peso;
     private String estadoIngreso;
     private String observaciones;
 
@@ -63,11 +63,11 @@ public class DetalleIngreso {
         this.edad = edad;
     }
 
-    public double getPeso() {
+    public Double getPeso() {
         return peso;
     }
 
-    public void setPeso(double peso) {
+    public void setPeso(Double peso) {
         this.peso = peso;
     }
 

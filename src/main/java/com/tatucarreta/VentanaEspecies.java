@@ -13,7 +13,6 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
@@ -28,9 +27,7 @@ public class VentanaEspecies {
     private final TextField txtNombre =
             new TextField();
 
-    public void mostrar() {
-
-        Stage ventana = new Stage();
+    public ScrollPane crearContenido() {
 
         // =========================================
         // ENCABEZADO
@@ -44,7 +41,6 @@ public class VentanaEspecies {
                 "-fx-text-fill: #7A8580;"
         );
 
-
         Label titulo =
                 new Label("Gestión de Especies");
 
@@ -53,7 +49,6 @@ public class VentanaEspecies {
                 "-fx-font-weight: bold;" +
                 "-fx-text-fill: #2E4138;"
         );
-
 
         Label subtitulo =
                 new Label(
@@ -64,7 +59,6 @@ public class VentanaEspecies {
                 "-fx-font-size: 14px;" +
                 "-fx-text-fill: #6B756F;"
         );
-
 
         VBox encabezado =
                 new VBox(
@@ -88,19 +82,17 @@ public class VentanaEspecies {
                 "-fx-text-fill: #2E4138;"
         );
 
-
         Label lblNombre =
-                new Label("Nombre de la especie");
+                new Label("Nombre de la especie *");
 
         lblNombre.setStyle(
                 "-fx-font-size: 13px;" +
                 "-fx-font-weight: bold;" +
-                "-fx-text-fill: #445149;"
+                "-fx-text-fill: #A33A3A;"
         );
 
-
         txtNombre.setPromptText(
-                "Ej: Aves, Mamíferos, Reptiles"
+                "Ej: Mamíferos, Aves, Reptiles"
         );
 
         txtNombre.setPrefHeight(38);
@@ -115,7 +107,6 @@ public class VentanaEspecies {
                 "-fx-border-color: #D1D8D2;" +
                 "-fx-padding: 8;"
         );
-
 
         VBox campoNombre =
                 new VBox(
@@ -141,16 +132,10 @@ public class VentanaEspecies {
         Button btnAgregar =
                 new Button("AGREGAR");
 
-        Button btnVolver =
-                new Button("VOLVER");
-
-
         btnLimpiar.setPrefHeight(36);
         btnEliminar.setPrefHeight(36);
         btnModificar.setPrefHeight(36);
         btnAgregar.setPrefHeight(36);
-        btnVolver.setPrefHeight(38);
-
 
         btnLimpiar.setStyle(
                 "-fx-background-color: white;" +
@@ -161,7 +146,6 @@ public class VentanaEspecies {
                 "-fx-background-radius: 8;"
         );
 
-
         btnEliminar.setStyle(
                 "-fx-background-color: white;" +
                 "-fx-text-fill: #A34A4A;" +
@@ -170,7 +154,6 @@ public class VentanaEspecies {
                 "-fx-border-radius: 8;" +
                 "-fx-background-radius: 8;"
         );
-
 
         btnModificar.setStyle(
                 "-fx-background-color: white;" +
@@ -181,24 +164,12 @@ public class VentanaEspecies {
                 "-fx-background-radius: 8;"
         );
 
-
         btnAgregar.setStyle(
                 "-fx-background-color: #254D3D;" +
                 "-fx-text-fill: white;" +
                 "-fx-font-weight: bold;" +
                 "-fx-background-radius: 8;"
         );
-
-
-        btnVolver.setStyle(
-                "-fx-background-color: white;" +
-                "-fx-text-fill: #405047;" +
-                "-fx-font-weight: bold;" +
-                "-fx-border-color: #C9D2CB;" +
-                "-fx-border-radius: 8;" +
-                "-fx-background-radius: 8;"
-        );
-
 
         HBox botones =
                 new HBox(
@@ -212,7 +183,6 @@ public class VentanaEspecies {
         botones.setAlignment(
                 Pos.CENTER_RIGHT
         );
-
 
         VBox tarjetaDatos =
                 new VBox(
@@ -238,18 +208,6 @@ public class VentanaEspecies {
         // TABLA
         // =========================================
 
-        TableColumn<Especie, Integer> columnaId =
-                new TableColumn<>("ID");
-
-        columnaId.setCellValueFactory(
-                new PropertyValueFactory<>(
-                        "idEspecie"
-                )
-        );
-
-        columnaId.setPrefWidth(120);
-
-
         TableColumn<Especie, String> columnaNombre =
                 new TableColumn<>(
                         "Nombre de la especie"
@@ -261,31 +219,26 @@ public class VentanaEspecies {
                 )
         );
 
-
         tabla.getColumns().clear();
 
-        tabla.getColumns().addAll(
-                columnaId,
+        // IMPORTANTE:
+        // No mostramos el ID.
+        // El ID sigue existiendo internamente
+        // para modificar y eliminar registros.
+
+        tabla.getColumns().add(
                 columnaNombre
         );
-
 
         tabla.setColumnResizePolicy(
                 TableView.CONSTRAINED_RESIZE_POLICY
         );
 
+        tabla.setPrefHeight(260);
 
-        // La tabla puede crecer pero no ocupa
-        // toda la pantalla innecesariamente
+        tabla.setMinHeight(260);
 
-        tabla.setPrefHeight(280);
-
-        tabla.setMinHeight(200);
-
-        VBox.setVgrow(
-                tabla,
-                Priority.ALWAYS
-        );
+        tabla.setMaxHeight(260);
 
 
         Label tituloTabla =
@@ -296,7 +249,6 @@ public class VentanaEspecies {
                 "-fx-font-weight: bold;" +
                 "-fx-text-fill: #2E4138;"
         );
-
 
         VBox tarjetaTabla =
                 new VBox(
@@ -314,22 +266,6 @@ public class VentanaEspecies {
                 "-fx-background-radius: 16;" +
                 "-fx-border-color: #D8DED9;" +
                 "-fx-border-radius: 16;"
-        );
-
-
-        // =========================================
-        // BOTÓN VOLVER
-        // =========================================
-
-        HBox contenedorVolver =
-                new HBox(btnVolver);
-
-        contenedorVolver.setAlignment(
-                Pos.CENTER
-        );
-
-        contenedorVolver.setPadding(
-                new Insets(5, 0, 15, 0)
         );
 
 
@@ -368,6 +304,12 @@ public class VentanaEspecies {
         btnAgregar.setOnAction(e -> {
 
             if (txtNombre.getText().isBlank()) {
+
+                mostrarMensaje(
+                        "Campo obligatorio",
+                        "Debe ingresar el nombre de la especie."
+                );
+
                 return;
             }
 
@@ -396,8 +338,22 @@ public class VentanaEspecies {
                     tabla.getSelectionModel()
                             .getSelectedItem();
 
-            if (seleccionada == null
-                    || txtNombre.getText().isBlank()) {
+            if (seleccionada == null) {
+
+                mostrarMensaje(
+                        "Modificar especie",
+                        "Debe seleccionar una especie."
+                );
+
+                return;
+            }
+
+            if (txtNombre.getText().isBlank()) {
+
+                mostrarMensaje(
+                        "Campo obligatorio",
+                        "Debe ingresar el nombre de la especie."
+                );
 
                 return;
             }
@@ -427,6 +383,24 @@ public class VentanaEspecies {
                             .getSelectedItem();
 
             if (seleccionada == null) {
+
+                mostrarMensaje(
+                        "Eliminar especie",
+                        "Debe seleccionar una especie."
+                );
+
+                return;
+            }
+
+            boolean confirmar =
+                    mostrarConfirmacion(
+                            "Eliminar especie",
+                            "¿Está seguro de eliminar la especie \""
+                                    + seleccionada.getNombre()
+                                    + "\"?"
+                    );
+
+            if (!confirmar) {
                 return;
             }
 
@@ -450,15 +424,6 @@ public class VentanaEspecies {
 
 
         // =========================================
-        // VOLVER
-        // =========================================
-
-        btnVolver.setOnAction(e ->
-                ventana.close()
-        );
-
-
-        // =========================================
         // CONTENIDO
         // =========================================
 
@@ -467,21 +432,23 @@ public class VentanaEspecies {
                         25,
                         encabezado,
                         tarjetaDatos,
-                        tarjetaTabla,
-                        contenedorVolver
+                        tarjetaTabla
                 );
 
         contenido.setPadding(
-                new Insets(25, 35, 35, 35)
+                new Insets(
+                        25,
+                        35,
+                        35,
+                        35
+                )
         );
 
         contenido.setAlignment(
                 Pos.TOP_CENTER
         );
 
-        contenido.setMaxWidth(
-                Double.MAX_VALUE
-        );
+        contenido.setMaxWidth(1200);
 
         contenido.setStyle(
                 "-fx-background-color: #F4F1E8;"
@@ -497,43 +464,12 @@ public class VentanaEspecies {
 
         scroll.setFitToWidth(true);
 
-        scroll.setFitToHeight(true);
-
         scroll.setStyle(
                 "-fx-background: #F4F1E8;" +
                 "-fx-background-color: #F4F1E8;"
         );
 
-
-        // =========================================
-        // ESCENA
-        // =========================================
-
-        Scene escena =
-                new Scene(
-                        scroll,
-                        1100,
-                        750
-                );
-
-
-        ventana.setTitle(
-                "Tatú Carreta - Gestión de Especies"
-        );
-
-        ventana.setMinWidth(900);
-
-        ventana.setMinHeight(650);
-
-        ventana.setScene(escena);
-
-        // IMPORTANTE:
-        // La ventana se abre maximizada para que
-        // nunca quede cortada en tu pantalla
-
-        ventana.setMaximized(true);
-
-        ventana.show();
+        return scroll;
     }
 
 
@@ -562,5 +498,83 @@ public class VentanaEspecies {
 
         tabla.getSelectionModel()
                 .clearSelection();
+    }
+
+
+    // =========================================
+    // MENSAJE
+    // =========================================
+
+    private void mostrarMensaje(
+            String titulo,
+            String mensaje) {
+
+        javafx.scene.control.Alert alerta =
+                new javafx.scene.control.Alert(
+                        javafx.scene.control.Alert.AlertType.WARNING
+                );
+
+        alerta.setTitle(titulo);
+
+        alerta.setHeaderText(null);
+
+        alerta.setContentText(mensaje);
+
+        alerta.showAndWait();
+    }
+
+
+    // =========================================
+    // CONFIRMACIÓN
+    // =========================================
+
+    private boolean mostrarConfirmacion(
+            String titulo,
+            String mensaje) {
+
+        javafx.scene.control.Alert alerta =
+                new javafx.scene.control.Alert(
+                        javafx.scene.control.Alert.AlertType.CONFIRMATION
+                );
+
+        alerta.setTitle(titulo);
+
+        alerta.setHeaderText(null);
+
+        alerta.setContentText(mensaje);
+
+        return alerta.showAndWait()
+                .filter(
+                        respuesta ->
+                                respuesta ==
+                                javafx.scene.control.ButtonType.OK
+                )
+                .isPresent();
+    }
+
+
+    // =========================================
+    // MOSTRAR VENTANA
+    // =========================================
+
+    public void mostrar() {
+
+        Stage ventana =
+                new Stage();
+
+        Scene escena =
+                new Scene(
+                        crearContenido(),
+                        1100,
+                        750
+                );
+
+        ventana.setTitle(
+                "Tatú Carreta - Gestión de Especies"
+        );
+
+        ventana.setScene(escena);
+
+        ventana.show();
     }
 }

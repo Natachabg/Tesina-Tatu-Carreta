@@ -6,7 +6,7 @@ import java.sql.Statement;
 public class CrearTablas {
 
     // =========================
-    // ESPECIES
+    // TABLA ESPECIES
     // =========================
 
     public static void crearTablaEspecies() {
@@ -23,23 +23,64 @@ public class CrearTablas {
 
             sentencia.execute(sql);
 
-            System.out.println(
-                    "Tabla especies creada correctamente."
-            );
+            System.out.println("Tabla especies creada correctamente.");
 
         } catch (Exception e) {
 
-            System.out.println(
-                    "Error al crear la tabla especies."
-            );
-
+            System.out.println("Error al crear la tabla especies.");
             System.out.println(e.getMessage());
         }
     }
 
 
     // =========================
-    // ANIMALES
+    // ACTUALIZAR ESPECIES
+    // =========================
+
+    public static void actualizarTablaEspecies() {
+
+        try (Connection conexion = ConexionSQLite.conectar();
+             Statement sentencia = conexion.createStatement()) {
+
+            sentencia.execute("""
+                    CREATE TABLE especies_nueva (
+                        id_especie INTEGER PRIMARY KEY AUTOINCREMENT,
+                        nombre TEXT NOT NULL UNIQUE
+                    )
+                    """);
+
+            sentencia.execute("""
+                    INSERT INTO especies_nueva (
+                        id_especie,
+                        nombre
+                    )
+                    SELECT
+                        id_especie,
+                        nombre
+                    FROM especies
+                    """);
+
+            sentencia.execute("""
+                    DROP TABLE especies
+                    """);
+
+            sentencia.execute("""
+                    ALTER TABLE especies_nueva
+                    RENAME TO especies
+                    """);
+
+            System.out.println("Tabla especies actualizada correctamente.");
+
+        } catch (Exception e) {
+
+            System.out.println("Error al actualizar la tabla especies.");
+            System.out.println(e.getMessage());
+        }
+    }
+
+
+    // =========================
+    // TABLA ANIMALES
     // =========================
 
     public static void crearTablaAnimales() {
@@ -50,8 +91,6 @@ public class CrearTablas {
                     id_especie INTEGER NOT NULL,
                     nombre_vulgar TEXT NOT NULL,
                     nombre_cientifico TEXT NOT NULL,
-                    cantidad_actual INTEGER NOT NULL DEFAULT 1,
-                    origen TEXT NOT NULL,
                     estado TEXT NOT NULL,
 
                     FOREIGN KEY (id_especie)
@@ -64,23 +103,76 @@ public class CrearTablas {
 
             sentencia.execute(sql);
 
-            System.out.println(
-                    "Tabla animales creada correctamente."
-            );
+            System.out.println("Tabla animales creada correctamente.");
 
         } catch (Exception e) {
 
-            System.out.println(
-                    "Error al crear la tabla animales."
-            );
-
+            System.out.println("Error al crear la tabla animales.");
             System.out.println(e.getMessage());
         }
     }
 
 
     // =========================
-    // INGRESOS / ACTAS
+    // ACTUALIZAR ANIMALES
+    // =========================
+
+    public static void actualizarTablaAnimales() {
+
+        try (Connection conexion = ConexionSQLite.conectar();
+             Statement sentencia = conexion.createStatement()) {
+
+            sentencia.execute("""
+                    CREATE TABLE animales_nueva (
+                        id_animal INTEGER PRIMARY KEY AUTOINCREMENT,
+                        id_especie INTEGER NOT NULL,
+                        nombre_vulgar TEXT NOT NULL,
+                        nombre_cientifico TEXT NOT NULL,
+                        estado TEXT NOT NULL,
+
+                        FOREIGN KEY (id_especie)
+                        REFERENCES especies(id_especie)
+                    )
+                    """);
+
+            sentencia.execute("""
+                    INSERT INTO animales_nueva (
+                        id_animal,
+                        id_especie,
+                        nombre_vulgar,
+                        nombre_cientifico,
+                        estado
+                    )
+                    SELECT
+                        id_animal,
+                        id_especie,
+                        'Sin especificar',
+                        'Sin especificar',
+                        'Activo'
+                    FROM animales
+                    """);
+
+            sentencia.execute("""
+                    DROP TABLE animales
+                    """);
+
+            sentencia.execute("""
+                    ALTER TABLE animales_nueva
+                    RENAME TO animales
+                    """);
+
+            System.out.println("Tabla animales actualizada correctamente.");
+
+        } catch (Exception e) {
+
+            System.out.println("Error al actualizar la tabla animales.");
+            System.out.println(e.getMessage());
+        }
+    }
+
+
+    // =========================
+    // TABLA INGRESOS
     // =========================
 
     public static void crearTablaIngresos() {
@@ -104,23 +196,18 @@ public class CrearTablas {
 
             sentencia.execute(sql);
 
-            System.out.println(
-                    "Tabla ingresos creada correctamente."
-            );
+            System.out.println("Tabla ingresos creada correctamente.");
 
         } catch (Exception e) {
 
-            System.out.println(
-                    "Error al crear la tabla ingresos."
-            );
-
+            System.out.println("Error al crear la tabla ingresos.");
             System.out.println(e.getMessage());
         }
     }
 
 
     // =========================
-    // DETALLE INGRESO
+    // TABLA DETALLE INGRESO
     // =========================
 
     public static void crearTablaDetalleIngreso() {
@@ -150,23 +237,18 @@ public class CrearTablas {
 
             sentencia.execute(sql);
 
-            System.out.println(
-                    "Tabla detalle_ingreso creada correctamente."
-            );
+            System.out.println("Tabla detalle_ingreso creada correctamente.");
 
         } catch (Exception e) {
 
-            System.out.println(
-                    "Error al crear la tabla detalle_ingreso."
-            );
-
+            System.out.println("Error al crear la tabla detalle_ingreso.");
             System.out.println(e.getMessage());
         }
     }
 
 
     // =========================
-    // HABITÁCULOS
+    // TABLA HABITACULOS
     // =========================
 
     public static void crearTablaHabitaculos() {
@@ -187,23 +269,18 @@ public class CrearTablas {
 
             sentencia.execute(sql);
 
-            System.out.println(
-                    "Tabla habitaculos creada correctamente."
-            );
+            System.out.println("Tabla habitaculos creada correctamente.");
 
         } catch (Exception e) {
 
-            System.out.println(
-                    "Error al crear la tabla habitaculos."
-            );
-
+            System.out.println("Error al crear la tabla habitaculos.");
             System.out.println(e.getMessage());
         }
     }
 
 
     // =========================
-    // PLANTEL PERMANENTE
+    // TABLA PLANTEL PERMANENTE
     // =========================
 
     public static void crearTablaPlantelPermanente() {
@@ -211,7 +288,7 @@ public class CrearTablas {
         String sql = """
                 CREATE TABLE IF NOT EXISTS plantel_permanente (
                     id_plantel INTEGER PRIMARY KEY AUTOINCREMENT,
-                    id_animal INTEGER NOT NULL,
+                    id_detalle INTEGER NOT NULL,
                     cantidad INTEGER NOT NULL,
                     tipo_ubicacion TEXT NOT NULL,
                     id_habitaculo INTEGER,
@@ -219,8 +296,8 @@ public class CrearTablas {
                     estado TEXT NOT NULL,
                     observaciones TEXT,
 
-                    FOREIGN KEY (id_animal)
-                    REFERENCES animales(id_animal),
+                    FOREIGN KEY (id_detalle)
+                    REFERENCES detalle_ingreso(id_detalle),
 
                     FOREIGN KEY (id_habitaculo)
                     REFERENCES habitaculos(id_habitaculo)
@@ -233,13 +310,13 @@ public class CrearTablas {
             sentencia.execute(sql);
 
             System.out.println(
-                    "Tabla plantel permanente creada correctamente."
+                    "Tabla plantel_permanente creada correctamente."
             );
 
         } catch (Exception e) {
 
             System.out.println(
-                    "Error al crear la tabla plantel permanente."
+                    "Error al crear la tabla plantel_permanente."
             );
 
             System.out.println(e.getMessage());
@@ -248,7 +325,7 @@ public class CrearTablas {
 
 
     // =========================
-    // MOVIMIENTOS
+    // TABLA MOVIMIENTOS
     // =========================
 
     public static void crearTablaMovimientos() {
@@ -256,19 +333,15 @@ public class CrearTablas {
         String sql = """
                 CREATE TABLE IF NOT EXISTS movimientos (
                     id_movimiento INTEGER PRIMARY KEY AUTOINCREMENT,
-                    id_animal INTEGER NOT NULL,
-                    id_ingreso INTEGER,
+                    id_detalle INTEGER NOT NULL,
                     fecha_movimiento TEXT NOT NULL,
                     tipo_movimiento TEXT NOT NULL,
                     cantidad INTEGER NOT NULL,
                     destino TEXT,
                     observaciones TEXT,
 
-                    FOREIGN KEY (id_animal)
-                    REFERENCES animales(id_animal),
-
-                    FOREIGN KEY (id_ingreso)
-                    REFERENCES ingresos(id_ingreso)
+                    FOREIGN KEY (id_detalle)
+                    REFERENCES detalle_ingreso(id_detalle)
                 )
                 """;
 
@@ -293,7 +366,121 @@ public class CrearTablas {
 
 
     // =========================
-    // IDENTIFICACIONES
+    // ACTUALIZAR MOVIMIENTOS
+    // =========================
+
+    public static void actualizarTablaMovimientos() {
+
+        try (Connection conexion = ConexionSQLite.conectar();
+             Statement sentencia = conexion.createStatement();
+             java.sql.ResultSet columnas =
+                     sentencia.executeQuery(
+                             "PRAGMA table_info(movimientos)"
+                     )) {
+
+            boolean tieneIdDetalle = false;
+            boolean tieneIdAnimal = false;
+
+            while (columnas.next()) {
+
+                String nombreColumna =
+                        columnas.getString("name");
+
+                if ("id_detalle".equalsIgnoreCase(nombreColumna)) {
+                    tieneIdDetalle = true;
+                }
+
+                if ("id_animal".equalsIgnoreCase(nombreColumna)) {
+                    tieneIdAnimal = true;
+                }
+            }
+
+            // Ya está actualizada
+            if (tieneIdDetalle) {
+
+                System.out.println(
+                        "La tabla movimientos ya está actualizada."
+                );
+
+                return;
+            }
+
+            // Tenemos la tabla vieja
+            if (tieneIdAnimal) {
+
+                int cantidadRegistros = 0;
+
+                try (java.sql.ResultSet resultado =
+                             sentencia.executeQuery(
+                                     "SELECT COUNT(*) AS total FROM movimientos"
+                             )) {
+
+                    if (resultado.next()) {
+
+                        cantidadRegistros =
+                                resultado.getInt("total");
+                    }
+                }
+
+                // En nuestra base actual sabemos que son 0.
+                // No hay movimientos que perder.
+                if (cantidadRegistros == 0) {
+
+                    sentencia.execute(
+                            "DROP TABLE movimientos"
+                    );
+
+                    String sqlNueva = """
+                            CREATE TABLE movimientos (
+                                id_movimiento INTEGER PRIMARY KEY AUTOINCREMENT,
+                                id_detalle INTEGER NOT NULL,
+                                fecha_movimiento TEXT NOT NULL,
+                                tipo_movimiento TEXT NOT NULL,
+                                cantidad INTEGER NOT NULL,
+                                destino TEXT,
+                                observaciones TEXT,
+
+                                FOREIGN KEY (id_detalle)
+                                REFERENCES detalle_ingreso(id_detalle)
+                            )
+                            """;
+
+                    sentencia.execute(sqlNueva);
+
+                    System.out.println(
+                            "Tabla movimientos actualizada correctamente."
+                    );
+
+                } else {
+
+                    System.out.println(
+                            "ATENCIÓN: la tabla movimientos tiene "
+                            + cantidadRegistros
+                            + " registros y no se modificó."
+                    );
+
+                }
+
+            } else {
+
+                System.out.println(
+                        "La tabla movimientos no tiene la estructura esperada."
+                );
+            }
+
+        } catch (Exception e) {
+
+            System.out.println(
+                    "Error al actualizar la tabla movimientos."
+            );
+
+            System.out.println(e.getMessage());
+        }
+    }
+
+
+    // =========================
+    // TABLA IDENTIFICACIONES
     // =========================
 
     public static void crearTablaIdentificaciones() {
@@ -301,14 +488,14 @@ public class CrearTablas {
         String sql = """
                 CREATE TABLE IF NOT EXISTS identificaciones (
                     id_identificacion INTEGER PRIMARY KEY AUTOINCREMENT,
-                    id_animal INTEGER NOT NULL,
+                    id_detalle INTEGER NOT NULL,
                     tipo_identificacion TEXT NOT NULL,
                     numero_identificacion TEXT NOT NULL,
                     fecha_identificacion TEXT,
                     observaciones TEXT,
 
-                    FOREIGN KEY (id_animal)
-                    REFERENCES animales(id_animal)
+                    FOREIGN KEY (id_detalle)
+                    REFERENCES detalle_ingreso(id_detalle)
                 )
                 """;
 
@@ -333,7 +520,7 @@ public class CrearTablas {
 
 
     // =========================
-    // USUARIOS
+    // TABLA USUARIOS
     // =========================
 
     public static void crearTablaUsuarios() {
@@ -367,78 +554,198 @@ public class CrearTablas {
             System.out.println(e.getMessage());
         }
     }
+    // =========================================================
+// ACTUALIZAR PLANTEL PERMANENTE
+// Permite registros de carga inicial sin id_detalle
+// =========================================================
 
+public static void actualizarTablaPlantelPermanente() {
 
-    // =========================
-    // ACTUALIZAR MOVIMIENTOS
-    // SOLO PARA BASES VIEJAS
-    // =========================
+    try (Connection conexion = ConexionSQLite.conectar();
+         Statement sentencia = conexion.createStatement()) {
 
-    public static void actualizarTablaMovimientosNueva() {
+        // Verificamos si id_detalle permite NULL.
+        // SQLite no permite modificar directamente una columna NOT NULL,
+        // por eso, si todavía es NOT NULL, recreamos la tabla conservando
+        // los datos existentes.
 
-        try (Connection conexion = ConexionSQLite.conectar();
-             Statement sentencia = conexion.createStatement()) {
+        boolean idDetalleEsObligatorio = false;
 
-            sentencia.execute("""
-                    CREATE TABLE IF NOT EXISTS movimientos_nueva (
-                        id_movimiento INTEGER PRIMARY KEY AUTOINCREMENT,
-                        id_animal INTEGER NOT NULL,
-                        id_ingreso INTEGER,
-                        fecha_movimiento TEXT NOT NULL,
-                        tipo_movimiento TEXT NOT NULL,
-                        cantidad INTEGER NOT NULL,
-                        destino TEXT,
-                        observaciones TEXT,
+        try (java.sql.ResultSet columnas =
+                     sentencia.executeQuery(
+                             "PRAGMA table_info(plantel_permanente)"
+                     )) {
 
-                        FOREIGN KEY (id_animal)
-                        REFERENCES animales(id_animal),
+            while (columnas.next()) {
 
-                        FOREIGN KEY (id_ingreso)
-                        REFERENCES ingresos(id_ingreso)
-                    )
-                    """);
+                String nombre =
+                        columnas.getString("name");
 
-            sentencia.execute("""
-                    INSERT INTO movimientos_nueva (
-                        id_movimiento,
-                        id_animal,
-                        fecha_movimiento,
-                        tipo_movimiento,
-                        cantidad,
-                        destino,
-                        observaciones
-                    )
-                    SELECT
-                        id_movimiento,
-                        id_animal,
-                        fecha_movimiento,
-                        tipo_movimiento,
-                        cantidad,
-                        destino,
-                        observaciones
-                    FROM movimientos
-                    """);
+                if ("id_detalle".equalsIgnoreCase(nombre)) {
 
-            sentencia.execute("""
-                    DROP TABLE movimientos
-                    """);
+                    int notNull =
+                            columnas.getInt("notnull");
 
-            sentencia.execute("""
-                    ALTER TABLE movimientos_nueva
-                    RENAME TO movimientos
-                    """);
+                    idDetalleEsObligatorio =
+                            notNull == 1;
 
-            System.out.println(
-                    "Tabla movimientos actualizada correctamente."
-            );
-
-        } catch (Exception e) {
-
-            System.out.println(
-                    "Error al actualizar tabla movimientos."
-            );
-
-            System.out.println(e.getMessage());
+                    break;
+                }
+            }
         }
+
+        // Ya permite NULL. No hacemos nada.
+        if (!idDetalleEsObligatorio) {
+
+            System.out.println(
+                    "La tabla plantel_permanente ya permite carga inicial."
+            );
+
+            return;
+        }
+
+        // -------------------------------------------------
+        // Crear tabla nueva
+        // -------------------------------------------------
+
+        sentencia.execute("""
+                CREATE TABLE plantel_permanente_nueva (
+                    id_plantel INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id_detalle INTEGER,
+                    cantidad INTEGER NOT NULL,
+                    tipo_ubicacion TEXT NOT NULL,
+                    id_habitaculo INTEGER,
+                    fecha_ingreso_plantel TEXT NOT NULL,
+                    estado TEXT NOT NULL,
+                    observaciones TEXT,
+
+                    FOREIGN KEY (id_detalle)
+                    REFERENCES detalle_ingreso(id_detalle),
+
+                    FOREIGN KEY (id_habitaculo)
+                    REFERENCES habitaculos(id_habitaculo)
+                )
+                """);
+
+        // -------------------------------------------------
+        // Copiar los datos existentes
+        // -------------------------------------------------
+
+        sentencia.execute("""
+                INSERT INTO plantel_permanente_nueva (
+                    id_plantel,
+                    id_detalle,
+                    cantidad,
+                    tipo_ubicacion,
+                    id_habitaculo,
+                    fecha_ingreso_plantel,
+                    estado,
+                    observaciones
+                )
+                SELECT
+                    id_plantel,
+                    id_detalle,
+                    cantidad,
+                    tipo_ubicacion,
+                    id_habitaculo,
+                    fecha_ingreso_plantel,
+                    estado,
+                    observaciones
+                FROM plantel_permanente
+                """);
+
+        // -------------------------------------------------
+        // Reemplazar tabla
+        // -------------------------------------------------
+
+        sentencia.execute(
+                "DROP TABLE plantel_permanente"
+        );
+
+        sentencia.execute("""
+                ALTER TABLE plantel_permanente_nueva
+                RENAME TO plantel_permanente
+                """);
+
+        System.out.println(
+                "Tabla plantel_permanente actualizada correctamente."
+        );
+
+    } catch (Exception e) {
+
+        System.out.println(
+                "Error al actualizar plantel_permanente."
+        );
+
+        System.out.println(
+                e.getMessage()
+        );
     }
+}
+
+
+// =========================================================
+// ACTUALIZAR MOVIMIENTOS
+// Agrega referencia opcional al plantel permanente
+// =========================================================
+
+public static void actualizarTablaMovimientosPlantel() {
+
+    try (Connection conexion = ConexionSQLite.conectar();
+         Statement sentencia = conexion.createStatement()) {
+
+        boolean tieneIdPlantel = false;
+
+        try (java.sql.ResultSet columnas =
+                     sentencia.executeQuery(
+                             "PRAGMA table_info(movimientos)"
+                     )) {
+
+            while (columnas.next()) {
+
+                String nombre =
+                        columnas.getString("name");
+
+                if ("id_plantel".equalsIgnoreCase(nombre)) {
+
+                    tieneIdPlantel = true;
+                    break;
+                }
+            }
+        }
+
+        // Si ya existe, no hacemos nada.
+        if (tieneIdPlantel) {
+
+            System.out.println(
+                    "La tabla movimientos ya tiene id_plantel."
+            );
+
+            return;
+        }
+
+        // -------------------------------------------------
+        // Agregar nueva referencia opcional
+        // -------------------------------------------------
+
+        sentencia.execute("""
+                ALTER TABLE movimientos
+                ADD COLUMN id_plantel INTEGER
+                """);
+
+        System.out.println(
+                "Columna id_plantel agregada a movimientos."
+        );
+
+    } catch (Exception e) {
+
+        System.out.println(
+                "Error al actualizar movimientos."
+        );
+
+        System.out.println(
+                e.getMessage()
+        );
+    }
+}
 }

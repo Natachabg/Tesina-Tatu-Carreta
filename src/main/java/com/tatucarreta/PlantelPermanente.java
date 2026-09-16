@@ -4,9 +4,10 @@ public class PlantelPermanente {
 
     private int idPlantel;
 
+    // Animal que pertenece al plantel permanente
     private int idAnimal;
 
-    // NUEVO: para mostrar el nombre en la tabla
+    // Para mostrar el nombre del animal
     private String nombreAnimal;
 
     private int cantidad;
@@ -15,7 +16,7 @@ public class PlantelPermanente {
 
     private Integer idHabitaculo;
 
-    // NUEVO: para mostrar el nombre en la tabla
+    // Para mostrar el nombre del habitáculo
     private String nombreHabitaculo;
 
     private String fechaIngresoPlantel;
@@ -34,7 +35,7 @@ public class PlantelPermanente {
 
 
     // =========================
-    // CONSTRUCTOR
+    // CONSTRUCTOR COMPLETO
     // =========================
 
     public PlantelPermanente(
@@ -164,7 +165,8 @@ public class PlantelPermanente {
     public void setFechaIngresoPlantel(
             String fechaIngresoPlantel) {
 
-        this.fechaIngresoPlantel = fechaIngresoPlantel;
+        this.fechaIngresoPlantel =
+                fechaIngresoPlantel;
     }
 
 

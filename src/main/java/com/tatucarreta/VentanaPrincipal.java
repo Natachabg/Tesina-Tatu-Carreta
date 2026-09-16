@@ -15,6 +15,7 @@ import javafx.stage.Stage;
 
 public class VentanaPrincipal extends Application {
 
+
     private Usuario usuarioActual;
 
     private VBox menu;
@@ -227,7 +228,7 @@ public class VentanaPrincipal extends Application {
         Button btnAnimales =
                 crearBotonMenu(
                         "🐾",
-                        "ABM Animales"
+                        "Animales"
                 );
 
         btnAnimales.setOnAction(e -> {
@@ -235,33 +236,37 @@ public class VentanaPrincipal extends Application {
             seleccionarBoton(btnAnimales);
 
             VentanaAnimales ventana =
-                    new VentanaAnimales();
+                    new VentanaAnimales(this);
 
-            ventana.mostrar();
+            raiz.setCenter(
+                    ventana.crearContenido()
+            );
         });
 
 
         Button btnIngresos =
                 crearBotonMenu(
                         "▣",
-                        "Registrar Ingreso"
+                        "Ingresos"
                 );
 
         btnIngresos.setOnAction(e -> {
 
             seleccionarBoton(btnIngresos);
 
-            VentanaIngresos ventana =
-                    new VentanaIngresos();
+           VentanaIngresos ventana =
+        new VentanaIngresos(this);
 
-            ventana.mostrar();
+raiz.setCenter(
+        ventana.crearContenido(this)
+);
         });
 
 
         Button btnMovimientos =
                 crearBotonMenu(
                         "↔",
-                        "Historial de Ingresos"
+                        "Movimientos"
                 );
 
         btnMovimientos.setOnAction(e -> {
@@ -269,12 +274,11 @@ public class VentanaPrincipal extends Application {
             seleccionarBoton(btnMovimientos);
 
             VentanaMovimientos ventana =
-                    new VentanaMovimientos();
+                    new VentanaMovimientos(this);
 
-            Stage nuevaVentana =
-                    new Stage();
-
-            ventana.mostrar(nuevaVentana);
+            raiz.setCenter(
+                    ventana.crearContenido()
+            );
         });
 
 
@@ -291,27 +295,26 @@ public class VentanaPrincipal extends Application {
             VentanaHabitaculos ventana =
                     new VentanaHabitaculos();
 
-            ventana.mostrar();
+            raiz.setCenter(
+                    ventana.crearContenido()
+            );
         });
+Button btnPlantelPermanente =
+        crearBotonMenu(
+                "♣",
+                "Plantel Permanente"
+        );
+btnPlantelPermanente.setOnAction(e -> {
 
+    seleccionarBoton(btnPlantelPermanente);
 
-        Button btnPlantel =
-                crearBotonMenu(
-                        "▤",
-                        "Plantel Permanente"
-                );
+    VentanaPlantelPermanente ventana =
+            new VentanaPlantelPermanente();
 
-        btnPlantel.setOnAction(e -> {
-
-            seleccionarBoton(btnPlantel);
-
-            VentanaPlantelPermanente ventana =
-                    new VentanaPlantelPermanente();
-
-            ventana.mostrar();
-        });
-
-
+    raiz.setCenter(
+            ventana.crearContenido()
+    );
+});
         Button btnEspecies =
                 crearBotonMenu(
                         "♧",
@@ -325,19 +328,28 @@ public class VentanaPrincipal extends Application {
             VentanaEspecies ventana =
                     new VentanaEspecies();
 
-            ventana.mostrar();
+            raiz.setCenter(
+                    ventana.crearContenido()
+            );
         });
 
 
-        menu.getChildren().addAll(
-                btnInicio,
-                btnAnimales,
-                btnIngresos,
-                btnMovimientos,
-                btnHabitaculos,
-                btnPlantel,
-                btnEspecies
-        );
+       menu.getChildren().addAll(
+
+        btnInicio,
+
+        btnIngresos,
+
+        btnAnimales,
+
+        btnPlantelPermanente,
+
+        btnMovimientos,
+
+        btnHabitaculos,
+
+        btnEspecies
+);
 
 
         // =========================
@@ -354,18 +366,20 @@ public class VentanaPrincipal extends Application {
             Button btnUsuarios =
                     crearBotonMenu(
                             "⚙",
-                            "Configuración Usuarios"
+                            "Usuarios"
                     );
 
             btnUsuarios.setOnAction(e -> {
 
-                seleccionarBoton(btnUsuarios);
+    seleccionarBoton(btnUsuarios);
 
-                VentanaUsuarios ventana =
-                        new VentanaUsuarios();
+    VentanaUsuarios ventana =
+            new VentanaUsuarios();
 
-                ventana.mostrar();
-            });
+    raiz.setCenter(
+            ventana.crearContenido()
+    );
+});
 
             menu.getChildren().add(
                     btnUsuarios
@@ -744,124 +758,395 @@ public class VentanaPrincipal extends Application {
 
 
         // =========================
-        // TARJETAS
-        // =========================
+// TARJETAS - DATOS REALES
+// =========================
 
-        HBox tarjetas =
-                new HBox(18);
+int totalAnimales = 0;
+int totalHabitaculos = 0;
+int ingresosMes = 0;
+int egresosMes = 0;
 
-        tarjetas.setAlignment(
-                Pos.CENTER_LEFT
+try {
+
+    // ---------------------------------
+    // TOTAL DE ANIMALES ACTIVOS
+    // ---------------------------------
+
+    AnimalDAO animalDAO = new AnimalDAO();
+
+for (Animal animal : animalDAO.listar()) {
+
+    if ("Activo".equalsIgnoreCase(animal.getEstado())
+            && animal.getCantidadActual() > 0) {
+
+        totalAnimales += animal.getCantidadActual();
+    }
+}
+
+// Animales que ya pertenecían al plantel
+// antes de comenzar a utilizar el sistema.
+String sqlPlantelInicial = """
+        SELECT COALESCE(SUM(p.cantidad), 0)
+        FROM plantel_permanente p
+        INNER JOIN animales a
+            ON a.id_animal = p.id_animal
+        WHERE a.estado = 'Activo'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM detalle_ingreso d
+              WHERE d.id_animal = p.id_animal
+          )
+        """;
+
+try (java.sql.Connection conexion = ConexionSQLite.conectar();
+     java.sql.PreparedStatement sentencia =
+             conexion.prepareStatement(sqlPlantelInicial);
+     java.sql.ResultSet resultado =
+             sentencia.executeQuery()) {
+
+    if (resultado.next()) {
+        totalAnimales += resultado.getInt(1);
+    }
+}
+
+
+    // ---------------------------------
+    // TOTAL DE HABITÁCULOS
+    // ---------------------------------
+
+    try (java.sql.Connection conexion = ConexionSQLite.conectar();
+         java.sql.PreparedStatement sentencia =
+                 conexion.prepareStatement(
+                         "SELECT COUNT(*) " +
+                         "FROM habitaculos"
+                 );
+         java.sql.ResultSet resultado =
+                 sentencia.executeQuery()) {
+
+        if (resultado.next()) {
+            totalHabitaculos = resultado.getInt(1);
+        }
+    }
+
+
+    // ---------------------------------
+    // INGRESOS DEL MES
+    // ---------------------------------
+
+    try (java.sql.Connection conexion = ConexionSQLite.conectar();
+         java.sql.PreparedStatement sentencia =
+                 conexion.prepareStatement(
+                         "SELECT COUNT(*) " +
+                         "FROM ingresos " +
+                        "WHERE substr(fecha_ingreso, 4, 2) = strftime('%m', 'now', 'localtime') " +
+"AND substr(fecha_ingreso, 7, 4) = strftime('%Y', 'now', 'localtime')"
+                 );
+         java.sql.ResultSet resultado =
+                 sentencia.executeQuery()) {
+
+        if (resultado.next()) {
+            ingresosMes = resultado.getInt(1);
+        }
+    }
+
+
+    // ---------------------------------
+    // EGRESOS DEL MES
+    // ---------------------------------
+
+    try (java.sql.Connection conexion = ConexionSQLite.conectar();
+         java.sql.PreparedStatement sentencia =
+                 conexion.prepareStatement(
+                         "SELECT COALESCE(SUM(cantidad), 0) " +
+                         "FROM movimientos " +
+                         "WHERE tipo_movimiento IN ('LIBERACION', 'TRASLADO') " +
+                         "AND substr(fecha_movimiento, 4, 2) = strftime('%m', 'now', 'localtime') " +
+"AND substr(fecha_movimiento, 7, 4) = strftime('%Y', 'now', 'localtime')"
+                 );
+         java.sql.ResultSet resultado =
+                 sentencia.executeQuery()) {
+
+        if (resultado.next()) {
+            egresosMes = resultado.getInt(1);
+        }
+    }
+
+} catch (java.sql.SQLException e) {
+
+    System.out.println(
+            "Error al cargar los datos del resumen:"
+    );
+
+    e.printStackTrace();
+}
+
+
+// =========================
+// CREAR TARJETAS
+// =========================
+
+HBox tarjetas =
+        new HBox(18);
+
+tarjetas.setAlignment(
+        Pos.CENTER_LEFT
+);
+
+
+// ---------------------------------
+// TARJETA ANIMALES
+// ---------------------------------
+
+VBox tarjetaAnimales =
+        crearTarjeta(
+                "TOTAL ANIMALES ACTIVOS",
+                String.valueOf(totalAnimales),
+                "Registrados actualmente"
         );
 
 
-        VBox tarjetaAnimales =
-                crearTarjeta(
-                        "TOTAL ANIMALES ACTIVOS",
-                        "—",
-                        "Registrados actualmente"
-                );
+// ---------------------------------
+// TARJETA HABITÁCULOS
+// ---------------------------------
 
-
-        VBox tarjetaHabitaculos =
-                crearTarjeta(
-                        "HABITÁCULOS",
-                        "—",
-                        "Ocupación actual"
-                );
-
-
-        VBox tarjetaIngresos =
-                crearTarjeta(
-                        "INGRESOS DEL MES",
-                        "—",
-                        "Ingresos registrados"
-                );
-
-
-        VBox tarjetaEgresos =
-                crearTarjeta(
-                        "EGRESOS DEL MES",
-                        "—",
-                        "Liberaciones y traslados"
-                );
-
-
-        HBox.setHgrow(
-                tarjetaAnimales,
-                Priority.ALWAYS
-        );
-
-        HBox.setHgrow(
-                tarjetaHabitaculos,
-                Priority.ALWAYS
-        );
-
-        HBox.setHgrow(
-                tarjetaIngresos,
-                Priority.ALWAYS
-        );
-
-        HBox.setHgrow(
-                tarjetaEgresos,
-                Priority.ALWAYS
+VBox tarjetaHabitaculos =
+        crearTarjeta(
+                "HABITÁCULOS",
+                String.valueOf(totalHabitaculos),
+                "Registrados en la reserva"
         );
 
 
-        tarjetas.getChildren().addAll(
-                tarjetaAnimales,
-                tarjetaHabitaculos,
-                tarjetaIngresos,
-                tarjetaEgresos
+// ---------------------------------
+// TARJETA INGRESOS
+// ---------------------------------
+
+VBox tarjetaIngresos =
+        crearTarjeta(
+                "INGRESOS DEL MES",
+                String.valueOf(ingresosMes),
+                "Ingresos registrados"
         );
+
+
+// ---------------------------------
+// TARJETA EGRESOS
+// ---------------------------------
+
+VBox tarjetaEgresos =
+        crearTarjeta(
+                "EGRESOS DEL MES",
+                String.valueOf(egresosMes),
+                "Liberaciones y traslados"
+        );
+
+
+// =========================
+// DISTRIBUCIÓN
+// =========================
+
+HBox.setHgrow(
+        tarjetaAnimales,
+        Priority.ALWAYS
+);
+
+HBox.setHgrow(
+        tarjetaHabitaculos,
+        Priority.ALWAYS
+);
+
+HBox.setHgrow(
+        tarjetaIngresos,
+        Priority.ALWAYS
+);
+
+HBox.setHgrow(
+        tarjetaEgresos,
+        Priority.ALWAYS
+);
+
+
+tarjetas.getChildren().addAll(
+        tarjetaAnimales,
+        tarjetaHabitaculos,
+        tarjetaIngresos,
+        tarjetaEgresos
+);
+
+        
 
 
         // =========================
         // ACTIVIDAD RECIENTE
         // =========================
 
-        Label tituloActividad =
-                new Label(
-                        "Actividades Recientes"
-                );
+      Label tituloActividad =
+        new Label("Actividades Recientes");
 
-        tituloActividad.setStyle(
-                "-fx-font-size: 18px;" +
-                "-fx-font-weight: bold;" +
-                "-fx-text-fill: "
-                        + COLOR_TEXTO + ";"
-        );
+tituloActividad.setStyle(
+        "-fx-font-size: 18px;" +
+        "-fx-font-weight: bold;" +
+        "-fx-text-fill: " + COLOR_TEXTO + ";"
+);
+
+VBox actividad =
+        new VBox(12);
+
+actividad.setPadding(
+        new Insets(25)
+);
+
+actividad.setStyle(
+        "-fx-background-color: white;" +
+        "-fx-background-radius: 12;" +
+        "-fx-border-color: #DDDAD1;" +
+        "-fx-border-radius: 12;"
+);
+
+actividad.getChildren().add(
+        tituloActividad
+);
 
 
-        Label sinActividad =
-                new Label(
-                        "Aquí aparecerán los últimos ingresos, movimientos y cambios registrados."
-                );
+// =========================
+// ÚLTIMOS INGRESOS
+// =========================
 
-        sinActividad.setStyle(
-                "-fx-font-size: 13px;" +
-                "-fx-text-fill: #727A76;"
-        );
+try {
+
+    String sqlIngresos =
+             "SELECT numero_acta, fecha_ingreso, organismo_procedencia, procedencia " +
+        "FROM ingresos " +
+        "ORDER BY id_ingreso DESC " +
+        "LIMIT 3";
+
+    try (java.sql.Connection conexion =
+                 ConexionSQLite.conectar();
+         java.sql.PreparedStatement sentencia =
+                 conexion.prepareStatement(sqlIngresos);
+         java.sql.ResultSet resultado =
+                 sentencia.executeQuery()) {
+
+        while (resultado.next()) {
+
+            String acta =
+                    resultado.getString("numero_acta");
+
+            String fecha =
+                    resultado.getString("fecha_ingreso");
+
+            String organismo =
+                    resultado.getString("organismo_procedencia");
+
+            String procedencia =
+                    resultado.getString("procedencia");
 
 
-        VBox actividad =
-                new VBox(10);
+            Label ingreso =
+                    new Label(
+                            "📥  Nuevo ingreso  •  Acta "
+                                    + acta
+                                    + "\n"
+                                    + "      "
+                                    + fecha
+                                    + "  —  "
+                                    + organismo
+                                    + "  —  "
+                                    + procedencia
+                    );
 
-        actividad.setPadding(
-                new Insets(25)
-        );
+            ingreso.setStyle(
+                    "-fx-font-size: 12px;" +
+                    "-fx-text-fill: #42534D;" +
+                    "-fx-padding: 10 0 10 0;"
+            );
 
-        actividad.setStyle(
-                "-fx-background-color: white;" +
-                "-fx-background-radius: 12;" +
-                "-fx-border-color: #DDDAD1;" +
-                "-fx-border-radius: 12;"
-        );
+            actividad.getChildren().add(
+                    ingreso
+            );
+        }
+    }
 
-        actividad.getChildren().addAll(
-                tituloActividad,
-                sinActividad
-        );
+
+// =========================
+// ÚLTIMOS MOVIMIENTOS
+// =========================
+
+    String sqlMovimientos =
+            "SELECT tipo_movimiento, cantidad, fecha_movimiento, " +
+            "destino, observaciones " +
+            "FROM movimientos " +
+            "ORDER BY id_movimiento DESC " +
+            "LIMIT 3";
+
+    try (java.sql.Connection conexion =
+                 ConexionSQLite.conectar();
+         java.sql.PreparedStatement sentencia =
+                 conexion.prepareStatement(sqlMovimientos);
+         java.sql.ResultSet resultado =
+                 sentencia.executeQuery()) {
+
+        while (resultado.next()) {
+
+            String tipo =
+                    resultado.getString("tipo_movimiento");
+
+            int cantidad =
+                    resultado.getInt("cantidad");
+
+            String fecha =
+                    resultado.getString("fecha_movimiento");
+
+            String destino =
+                    resultado.getString("destino");
+
+
+            if (destino == null || destino.isBlank()) {
+                destino = "Sin destino especificado";
+            }
+
+
+            Label movimiento =
+                    new Label(
+                            "↔  Movimiento registrado  •  "
+                                    + tipo
+                                    + "\n"
+                                    + "      Cantidad: "
+                                    + cantidad
+                                    + "  —  "
+                                    + fecha
+                                    + "  —  "
+                                    + destino
+                    );
+
+            movimiento.setStyle(
+                    "-fx-font-size: 12px;" +
+                    "-fx-text-fill: #42534D;" +
+                    "-fx-padding: 10 0 10 0;"
+            );
+
+            actividad.getChildren().add(
+                    movimiento
+            );
+        }
+    }
+
+} catch (java.sql.SQLException e) {
+
+    Label error =
+            new Label(
+                    "No se pudieron cargar las actividades recientes."
+            );
+
+    error.setStyle(
+            "-fx-font-size: 12px;" +
+            "-fx-text-fill: #A05A5A;"
+    );
+
+    actividad.getChildren().add(
+            error
+    );
+}
 
 
         contenido.getChildren().addAll(
@@ -874,7 +1159,73 @@ public class VentanaPrincipal extends Application {
 
         raiz.setCenter(contenido);
     }
+// =====================================================
+// MOSTRAR FICHA DEL ANIMAL
+// =====================================================
 
+public void mostrarFichaAnimal(int idAnimal) {
+
+    VentanaFichaAnimal ficha =
+            new VentanaFichaAnimal();
+
+    raiz.setCenter(
+            ficha.crearContenidoAnimal(
+                    idAnimal,
+                    () -> {
+                        VentanaAnimales animales =
+                                new VentanaAnimales();
+
+                        raiz.setCenter(
+                                animales.crearContenido()
+                        );
+                    }
+            )
+    );
+}
+// =====================================================
+    // MOSTRAR FICHA DEL ANIMAL DESDE MOVIMIENTOS
+    // =====================================================
+
+    public void mostrarFichaAnimalDesdeMovimientos(int idAnimal) {
+
+        VentanaFichaAnimal ficha =
+                new VentanaFichaAnimal();
+
+        raiz.setCenter(
+                ficha.crearContenidoAnimal(
+                        idAnimal,
+                        () -> {
+                            VentanaMovimientos movimientos =
+                                    new VentanaMovimientos(this);
+
+                            raiz.setCenter(
+                                    movimientos.crearContenido()
+                            );
+                        }
+                )
+        );
+    }
+
+    public void mostrarFichaIngreso(int idIngreso) {
+
+    VentanaFichaIngreso ficha =
+            new VentanaFichaIngreso();
+
+    raiz.setCenter(
+            ficha.crearContenido(
+                    idIngreso,
+                    () -> {
+                        VentanaIngresos ingresos =
+                                new VentanaIngresos(this);  
+                                
+
+                        raiz.setCenter(
+                                ingresos.crearContenido(this)
+                        );
+                    }
+            )
+    );
+}
 
     // =====================================================
     // CREAR TARJETA

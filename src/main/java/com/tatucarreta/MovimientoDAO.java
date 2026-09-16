@@ -8,16 +8,16 @@ import java.util.List;
 
 public class MovimientoDAO {
 
-    // =========================
-    // AGREGAR
-    // =========================
+    // =========================================================
+    // AGREGAR MOVIMIENTO
+    // =========================================================
 
     public void agregar(Movimiento movimiento) {
 
         String sql = """
                 INSERT INTO movimientos (
-                    id_animal,
-                    id_ingreso,
+                    id_detalle,
+                    id_plantel,
                     fecha_movimiento,
                     tipo_movimiento,
                     cantidad,
@@ -27,22 +27,20 @@ public class MovimientoDAO {
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """;
 
-        try (Connection conexion =
-                     ConexionSQLite.conectar();
+        try (Connection conexion = ConexionSQLite.conectar();
              PreparedStatement sentencia =
                      conexion.prepareStatement(sql)) {
 
             sentencia.setInt(
                     1,
-                    movimiento.getIdAnimal()
+                    movimiento.getIdDetalle()
             );
 
-            // ID INGRESO OPCIONAL
-            if (movimiento.getIdIngreso() != null) {
+            if (movimiento.getIdPlantel() != null) {
 
                 sentencia.setInt(
                         2,
-                        movimiento.getIdIngreso()
+                        movimiento.getIdPlantel()
                 );
 
             } else {
@@ -90,14 +88,17 @@ public class MovimientoDAO {
                     "Error al registrar el movimiento."
             );
 
-            System.out.println(e.getMessage());
+            System.out.println(
+                    e.getMessage()
+            );
         }
     }
 
 
-    // =========================
-    // LISTAR
-    // =========================
+    // =========================================================
+    // LISTAR MOVIMIENTOS
+    // Compatible con la estructura actual de la base
+    // =========================================================
 
     public List<Movimiento> listar() {
 
@@ -106,22 +107,42 @@ public class MovimientoDAO {
 
         String sql = """
                 SELECT
-                    id_movimiento,
-                    id_animal,
-                    id_ingreso,
-                    fecha_movimiento,
-                    tipo_movimiento,
-                    cantidad,
-                    destino,
-                    observaciones
-                FROM movimientos
-                ORDER BY fecha_movimiento DESC
+                    m.id_movimiento,
+                    m.id_detalle,
+                    m.id_plantel,
+                    m.fecha_movimiento,
+                    m.tipo_movimiento,
+                    m.cantidad,
+                    m.destino,
+                    m.observaciones,
+
+                    a.nombre_vulgar AS nombre_animal,
+                    e.nombre AS especie,
+                    i.numero_acta AS numero_acta
+
+                FROM movimientos m
+
+                INNER JOIN detalle_ingreso d
+                    ON m.id_detalle = d.id_detalle
+
+                INNER JOIN animales a
+                    ON d.id_animal = a.id_animal
+
+                INNER JOIN especies e
+                    ON a.id_especie = e.id_especie
+
+                INNER JOIN ingresos i
+                    ON d.id_ingreso = i.id_ingreso
+
+                ORDER BY m.id_movimiento DESC
                 """;
 
         try (Connection conexion =
                      ConexionSQLite.conectar();
+
              PreparedStatement sentencia =
                      conexion.prepareStatement(sql);
+
              ResultSet resultado =
                      sentencia.executeQuery()) {
 
@@ -136,25 +157,25 @@ public class MovimientoDAO {
                         )
                 );
 
-                movimiento.setIdAnimal(
+                movimiento.setIdDetalle(
                         resultado.getInt(
-                                "id_animal"
+                                "id_detalle"
                         )
                 );
 
-                int idIngreso =
+                int idPlantel =
                         resultado.getInt(
-                                "id_ingreso"
+                                "id_plantel"
                         );
 
                 if (resultado.wasNull()) {
 
-                    movimiento.setIdIngreso(null);
+                    movimiento.setIdPlantel(null);
 
                 } else {
 
-                    movimiento.setIdIngreso(
-                            idIngreso
+                    movimiento.setIdPlantel(
+                            idPlantel
                     );
                 }
 
@@ -188,6 +209,24 @@ public class MovimientoDAO {
                         )
                 );
 
+                movimiento.setNombreAnimal(
+                        resultado.getString(
+                                "nombre_animal"
+                        )
+                );
+
+                movimiento.setEspecie(
+                        resultado.getString(
+                                "especie"
+                        )
+                );
+
+                movimiento.setNumeroActa(
+                        resultado.getString(
+                                "numero_acta"
+                        )
+                );
+
                 movimientos.add(
                         movimiento
                 );
@@ -199,18 +238,21 @@ public class MovimientoDAO {
                     "Error al listar movimientos."
             );
 
-            System.out.println(e.getMessage());
+            System.out.println(
+                    e.getMessage()
+            );
         }
 
         return movimientos;
     }
 
 
-    // =========================
-    // ELIMINAR
-    // =========================
+    // =========================================================
+    // ELIMINAR MOVIMIENTO
+    // =========================================================
 
-    public void eliminar(int idMovimiento) {
+    public void eliminar(
+            int idMovimiento) {
 
         String sql = """
                 DELETE FROM movimientos
@@ -219,6 +261,7 @@ public class MovimientoDAO {
 
         try (Connection conexion =
                      ConexionSQLite.conectar();
+
              PreparedStatement sentencia =
                      conexion.prepareStatement(sql)) {
 
@@ -239,7 +282,9 @@ public class MovimientoDAO {
                     "Error al eliminar movimiento."
             );
 
-            System.out.println(e.getMessage());
+            System.out.println(
+                    e.getMessage()
+            );
         }
     }
 }

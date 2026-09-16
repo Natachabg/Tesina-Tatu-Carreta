@@ -4,61 +4,26 @@ public class Movimiento {
 
     private int idMovimiento;
 
-    // Animal al que corresponde el movimiento
-    private int idAnimal;
+    // Puede venir de un detalle de ingreso
+    private int idDetalle;
 
-    // Opcional: permite saber de qué ingreso proviene
-    private Integer idIngreso;
+    // Puede estar relacionado directamente con un registro
+    // del Plantel Permanente
+    private Integer idPlantel;
 
     private String fechaMovimiento;
-
-    // LIBERACION / TRASLADO / FALLECIMIENTO / PLANTEL PERMANENTE
     private String tipoMovimiento;
-
     private int cantidad;
-
-    // Se utiliza principalmente para traslados
     private String destino;
-
     private String observaciones;
 
-
-    // =========================
-    // CONSTRUCTOR VACÍO
-    // =========================
+    // Datos para mostrar en el historial
+    private String nombreAnimal;
+    private String especie;
+    private String numeroActa;
 
     public Movimiento() {
     }
-
-
-    // =========================
-    // CONSTRUCTOR COMPLETO
-    // =========================
-
-    public Movimiento(
-            int idMovimiento,
-            int idAnimal,
-            Integer idIngreso,
-            String fechaMovimiento,
-            String tipoMovimiento,
-            int cantidad,
-            String destino,
-            String observaciones) {
-
-        this.idMovimiento = idMovimiento;
-        this.idAnimal = idAnimal;
-        this.idIngreso = idIngreso;
-        this.fechaMovimiento = fechaMovimiento;
-        this.tipoMovimiento = tipoMovimiento;
-        this.cantidad = cantidad;
-        this.destino = destino;
-        this.observaciones = observaciones;
-    }
-
-
-    // =========================
-    // ID MOVIMIENTO
-    // =========================
 
     public int getIdMovimiento() {
         return idMovimiento;
@@ -68,36 +33,21 @@ public class Movimiento {
         this.idMovimiento = idMovimiento;
     }
 
-
-    // =========================
-    // ID ANIMAL
-    // =========================
-
-    public int getIdAnimal() {
-        return idAnimal;
+    public int getIdDetalle() {
+        return idDetalle;
     }
 
-    public void setIdAnimal(int idAnimal) {
-        this.idAnimal = idAnimal;
+    public void setIdDetalle(int idDetalle) {
+        this.idDetalle = idDetalle;
     }
 
-
-    // =========================
-    // ID INGRESO
-    // =========================
-
-    public Integer getIdIngreso() {
-        return idIngreso;
+    public Integer getIdPlantel() {
+        return idPlantel;
     }
 
-    public void setIdIngreso(Integer idIngreso) {
-        this.idIngreso = idIngreso;
+    public void setIdPlantel(Integer idPlantel) {
+        this.idPlantel = idPlantel;
     }
-
-
-    // =========================
-    // FECHA
-    // =========================
 
     public String getFechaMovimiento() {
         return fechaMovimiento;
@@ -107,11 +57,6 @@ public class Movimiento {
         this.fechaMovimiento = fechaMovimiento;
     }
 
-
-    // =========================
-    // TIPO DE MOVIMIENTO
-    // =========================
-
     public String getTipoMovimiento() {
         return tipoMovimiento;
     }
@@ -119,11 +64,6 @@ public class Movimiento {
     public void setTipoMovimiento(String tipoMovimiento) {
         this.tipoMovimiento = tipoMovimiento;
     }
-
-
-    // =========================
-    // CANTIDAD
-    // =========================
 
     public int getCantidad() {
         return cantidad;
@@ -133,11 +73,6 @@ public class Movimiento {
         this.cantidad = cantidad;
     }
 
-
-    // =========================
-    // DESTINO
-    // =========================
-
     public String getDestino() {
         return destino;
     }
@@ -146,16 +81,40 @@ public class Movimiento {
         this.destino = destino;
     }
 
-
-    // =========================
-    // OBSERVACIONES
-    // =========================
-
     public String getObservaciones() {
         return observaciones;
     }
 
     public void setObservaciones(String observaciones) {
         this.observaciones = observaciones;
+    }
+
+    public String getNombreAnimal() {
+        return nombreAnimal;
+    }
+
+    public void setNombreAnimal(String nombreAnimal) {
+        this.nombreAnimal = nombreAnimal;
+    }
+
+    public String getEspecie() {
+        return especie;
+    }
+
+    public void setEspecie(String especie) {
+        this.especie = especie;
+    }
+
+    public String getNumeroActa() {
+        return numeroActa;
+    }
+
+    public void setNumeroActa(String numeroActa) {
+        this.numeroActa = numeroActa;
+    }
+
+    @Override
+    public String toString() {
+        return tipoMovimiento + " - " + cantidad;
     }
 }

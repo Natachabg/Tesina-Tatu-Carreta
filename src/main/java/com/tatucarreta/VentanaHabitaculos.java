@@ -1,7 +1,5 @@
 package com.tatucarreta;
 
-import javafx.beans.property.SimpleIntegerProperty;
-import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -9,16 +7,14 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
-import javafx.scene.layout.GridPane;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
@@ -27,24 +23,25 @@ public class VentanaHabitaculos {
     private final HabitaculoDAO habitaculoDAO =
             new HabitaculoDAO();
 
-    private final ObservableList<Habitaculo> listaHabitaculos =
-            FXCollections.observableArrayList();
+    private final TableView<Habitaculo> tabla =
+            new TableView<>();
 
-    private Habitaculo habitaculoSeleccionado;
+    private final TextField txtNombre =
+            new TextField();
 
-    private TableView<Habitaculo> tabla;
+    private final TextField txtSector =
+            new TextField();
 
-    private TextField txtNombre;
-    private TextField txtSector;
-    private TextField txtCapacidad;
+    private final TextField txtCapacidad =
+            new TextField();
 
-    private ComboBox<String> cmbEstado;
+    private final TextField txtEstado =
+            new TextField();
 
-    private TextArea txtObservaciones;
+    private final TextArea txtObservaciones =
+            new TextArea();
 
-    public void mostrar() {
-
-        Stage escenario = new Stage();
+    public ScrollPane crearContenido() {
 
         // =========================================
         // ENCABEZADO
@@ -69,7 +66,7 @@ public class VentanaHabitaculos {
 
         Label subtitulo =
                 new Label(
-                        "Administre los habitáculos de la reserva"
+                        "Administre los espacios destinados al alojamiento de animales"
                 );
 
         subtitulo.setStyle(
@@ -77,195 +74,113 @@ public class VentanaHabitaculos {
                 "-fx-text-fill: #6B756F;"
         );
 
-        VBox encabezado = new VBox(
-                6,
-                breadcrumb,
-                titulo,
-                subtitulo
-        );
-
+        VBox encabezado =
+                new VBox(
+                        6,
+                        breadcrumb,
+                        titulo,
+                        subtitulo
+                );
 
         // =========================================
         // CAMPOS
         // =========================================
 
-        txtNombre = new TextField();
+        Label tituloDatos =
+                new Label("Datos del Habitáculo");
+
+        tituloDatos.setStyle(
+                "-fx-font-size: 19px;" +
+                "-fx-font-weight: bold;" +
+                "-fx-text-fill: #2E4138;"
+        );
+
+        Label lblNombre =
+                crearEtiqueta("Nombre");
+
+        Label lblSector =
+                crearEtiqueta("Sector");
+
+        Label lblCapacidad =
+                crearEtiqueta("Capacidad");
+
+        Label lblEstado =
+                crearEtiqueta("Estado");
+
+        Label lblObservaciones =
+                crearEtiqueta("Observaciones");
 
         txtNombre.setPromptText(
-                "Ej: Aviario principal"
+                "Ej: Recinto de felinos"
         );
-
-        txtSector = new TextField();
 
         txtSector.setPromptText(
-                "Ej: Sector A"
+                "Ej: Sector Norte"
         );
-
-        txtCapacidad = new TextField();
 
         txtCapacidad.setPromptText(
-                "Ej: 50"
+                "Ej: 10"
         );
 
-        cmbEstado = new ComboBox<>();
-
-        cmbEstado.getItems().addAll(
-                "Activo",
-                "Inactivo"
+        txtEstado.setPromptText(
+                "Ej: Disponible"
         );
-
-        cmbEstado.setValue("Activo");
-
-        txtObservaciones = new TextArea();
 
         txtObservaciones.setPromptText(
-                "Observaciones adicionales..."
+                "Observaciones del habitáculo"
         );
 
         txtObservaciones.setPrefRowCount(3);
 
-        txtObservaciones.setWrapText(true);
+        VBox campoNombre =
+                crearCampo(
+                        lblNombre,
+                        txtNombre
+                );
 
+        VBox campoSector =
+                crearCampo(
+                        lblSector,
+                        txtSector
+                );
 
-        // =========================================
-        // ESTILO DE CAMPOS
-        // =========================================
+        VBox campoCapacidad =
+                crearCampo(
+                        lblCapacidad,
+                        txtCapacidad
+                );
 
-        String estiloCampo =
-                "-fx-background-radius: 8;" +
-                "-fx-border-radius: 8;" +
-                "-fx-border-color: #D1D8D2;" +
-                "-fx-padding: 8;";
+        VBox campoEstado =
+                crearCampo(
+                        lblEstado,
+                        txtEstado
+                );
 
-        txtNombre.setStyle(estiloCampo);
-        txtSector.setStyle(estiloCampo);
-        txtCapacidad.setStyle(estiloCampo);
-        cmbEstado.setStyle(estiloCampo);
-        txtObservaciones.setStyle(estiloCampo);
+        VBox campoObservaciones =
+                crearCampo(
+                        lblObservaciones,
+                        txtObservaciones
+                );
 
-        txtNombre.setPrefHeight(38);
-        txtSector.setPrefHeight(38);
-        txtCapacidad.setPrefHeight(38);
-        cmbEstado.setPrefHeight(38);
+        HBox fila1 =
+                new HBox(
+                        20,
+                        campoNombre,
+                        campoSector
+                );
 
+        HBox fila2 =
+                new HBox(
+                        20,
+                        campoCapacidad,
+                        campoEstado
+                );
 
-        // =========================================
-        // FORMULARIO
-        // =========================================
-
-        Label lblNombre =
-                crearLabelCampo("Nombre");
-
-        Label lblSector =
-                crearLabelCampo("Sector");
-
-        Label lblCapacidad =
-                crearLabelCampo("Capacidad");
-
-        Label lblEstado =
-                crearLabelCampo("Estado");
-
-        Label lblObservaciones =
-                crearLabelCampo("Observaciones");
-
-
-        GridPane formulario = new GridPane();
-
-        formulario.setHgap(20);
-        formulario.setVgap(15);
-
-        formulario.add(
-                lblNombre,
-                0,
-                0
-        );
-
-        formulario.add(
-                lblSector,
-                1,
-                0
-        );
-
-        formulario.add(
-                txtNombre,
-                0,
-                1
-        );
-
-        formulario.add(
-                txtSector,
-                1,
-                1
-        );
-
-
-        formulario.add(
-                lblCapacidad,
-                0,
-                2
-        );
-
-        formulario.add(
-                lblEstado,
-                1,
-                2
-        );
-
-        formulario.add(
-                txtCapacidad,
-                0,
-                3
-        );
-
-        formulario.add(
-                cmbEstado,
-                1,
-                3
-        );
-
-
-        formulario.add(
-                lblObservaciones,
-                0,
-                4,
-                2,
-                1
-        );
-
-        formulario.add(
-                txtObservaciones,
-                0,
-                5,
-                2,
-                1
-        );
-
-
-        GridPane.setHgrow(
-                txtNombre,
-                Priority.ALWAYS
-        );
-
-        GridPane.setHgrow(
-                txtSector,
-                Priority.ALWAYS
-        );
-
-        GridPane.setHgrow(
-                txtCapacidad,
-                Priority.ALWAYS
-        );
-
-        GridPane.setHgrow(
-                cmbEstado,
-                Priority.ALWAYS
-        );
-
-        GridPane.setHgrow(
-                txtObservaciones,
-                Priority.ALWAYS
-        );
-
+        campoNombre.setPrefWidth(350);
+        campoSector.setPrefWidth(350);
+        campoCapacidad.setPrefWidth(350);
+        campoEstado.setPrefWidth(350);
+        campoObservaciones.setPrefWidth(720);
 
         // =========================================
         // BOTONES
@@ -280,19 +195,13 @@ public class VentanaHabitaculos {
         Button btnModificar =
                 new Button("MODIFICAR");
 
-        Button btnGuardar =
+        Button btnAgregar =
                 new Button("AGREGAR");
 
-        Button btnVolver =
-                new Button("VOLVER");
-
-
-        btnLimpiar.setPrefHeight(38);
-        btnEliminar.setPrefHeight(38);
-        btnModificar.setPrefHeight(38);
-        btnGuardar.setPrefHeight(38);
-        btnVolver.setPrefHeight(38);
-
+        btnLimpiar.setPrefHeight(36);
+        btnEliminar.setPrefHeight(36);
+        btnModificar.setPrefHeight(36);
+        btnAgregar.setPrefHeight(36);
 
         btnLimpiar.setStyle(
                 "-fx-background-color: white;" +
@@ -321,56 +230,35 @@ public class VentanaHabitaculos {
                 "-fx-background-radius: 8;"
         );
 
-        btnGuardar.setStyle(
+        btnAgregar.setStyle(
                 "-fx-background-color: #254D3D;" +
                 "-fx-text-fill: white;" +
                 "-fx-font-weight: bold;" +
                 "-fx-background-radius: 8;"
         );
 
-        btnVolver.setStyle(
-                "-fx-background-color: white;" +
-                "-fx-text-fill: #405047;" +
-                "-fx-font-weight: bold;" +
-                "-fx-border-color: #C9D2CB;" +
-                "-fx-border-radius: 8;" +
-                "-fx-background-radius: 8;"
-        );
-
-
-        HBox botones = new HBox(
-                10,
-                btnLimpiar,
-                btnEliminar,
-                btnModificar,
-                btnGuardar
-        );
+        HBox botones =
+                new HBox(
+                        10,
+                        btnLimpiar,
+                        btnEliminar,
+                        btnModificar,
+                        btnAgregar
+                );
 
         botones.setAlignment(
                 Pos.CENTER_RIGHT
         );
 
-
-        // =========================================
-        // TARJETA DEL FORMULARIO
-        // =========================================
-
-        Label tituloDatos =
-                new Label("Datos del Habitáculo");
-
-        tituloDatos.setStyle(
-                "-fx-font-size: 19px;" +
-                "-fx-font-weight: bold;" +
-                "-fx-text-fill: #2E4138;"
-        );
-
-
-        VBox tarjetaDatos = new VBox(
-                20,
-                tituloDatos,
-                formulario,
-                botones
-        );
+        VBox tarjetaDatos =
+                new VBox(
+                        18,
+                        tituloDatos,
+                        fila1,
+                        fila2,
+                        campoObservaciones,
+                        botones
+                );
 
         tarjetaDatos.setPadding(
                 new Insets(25)
@@ -383,93 +271,45 @@ public class VentanaHabitaculos {
                 "-fx-border-radius: 16;"
         );
 
-
         // =========================================
         // TABLA
         // =========================================
 
-        tabla = new TableView<>();
-
-        TableColumn<Habitaculo, Number> colId =
-                new TableColumn<>("ID");
-
-        colId.setCellValueFactory(
-                celda ->
-                        new SimpleIntegerProperty(
-                                celda.getValue()
-                                        .getIdHabitaculo()
-                        )
-        );
-
-
-        TableColumn<Habitaculo, String> colNombre =
+        TableColumn<Habitaculo, String> columnaNombre =
                 new TableColumn<>("Nombre");
 
-        colNombre.setCellValueFactory(
-                celda ->
-                        new SimpleStringProperty(
-                                celda.getValue()
-                                        .getNombre()
-                        )
+        columnaNombre.setCellValueFactory(
+                new PropertyValueFactory<>("nombre")
         );
 
-
-        TableColumn<Habitaculo, String> colSector =
+        TableColumn<Habitaculo, String> columnaSector =
                 new TableColumn<>("Sector");
 
-        colSector.setCellValueFactory(
-                celda ->
-                        new SimpleStringProperty(
-                                celda.getValue()
-                                        .getSector()
-                        )
+        columnaSector.setCellValueFactory(
+                new PropertyValueFactory<>("sector")
         );
 
-
-        TableColumn<Habitaculo, Number> colCapacidad =
+        TableColumn<Habitaculo, Integer> columnaCapacidad =
                 new TableColumn<>("Capacidad");
 
-        colCapacidad.setCellValueFactory(
-                celda -> {
-
-                    Integer capacidad =
-                            celda.getValue()
-                                    .getCapacidad();
-
-                    if (capacidad == null) {
-
-                        return new SimpleIntegerProperty(0);
-                    }
-
-                    return new SimpleIntegerProperty(
-                            capacidad
-                    );
-                }
+        columnaCapacidad.setCellValueFactory(
+                new PropertyValueFactory<>("capacidad")
         );
 
-
-        TableColumn<Habitaculo, String> colEstado =
+        TableColumn<Habitaculo, String> columnaEstado =
                 new TableColumn<>("Estado");
 
-        colEstado.setCellValueFactory(
-                celda ->
-                        new SimpleStringProperty(
-                                celda.getValue()
-                                        .getEstado()
-                        )
+        columnaEstado.setCellValueFactory(
+                new PropertyValueFactory<>("estado")
         );
 
+        tabla.getColumns().clear();
 
         tabla.getColumns().addAll(
-                colId,
-                colNombre,
-                colSector,
-                colCapacidad,
-                colEstado
-        );
-
-        tabla.setItems(
-                listaHabitaculos
+                columnaNombre,
+                columnaSector,
+                columnaCapacidad,
+                columnaEstado
         );
 
         tabla.setColumnResizePolicy(
@@ -477,30 +317,6 @@ public class VentanaHabitaculos {
         );
 
         tabla.setPrefHeight(280);
-
-        tabla.setMinHeight(220);
-
-
-        tabla.getSelectionModel()
-                .selectedItemProperty()
-                .addListener(
-                        (observable,
-                         anterior,
-                         seleccionado) -> {
-
-                            if (seleccionado != null) {
-
-                                cargarHabitaculoSeleccionado(
-                                        seleccionado
-                                );
-                            }
-                        }
-                );
-
-
-        // =========================================
-        // TARJETA DE TABLA
-        // =========================================
 
         Label tituloTabla =
                 new Label("Habitáculos Registrados");
@@ -511,12 +327,12 @@ public class VentanaHabitaculos {
                 "-fx-text-fill: #2E4138;"
         );
 
-
-        VBox tarjetaTabla = new VBox(
-                15,
-                tituloTabla,
-                tabla
-        );
+        VBox tarjetaTabla =
+                new VBox(
+                        15,
+                        tituloTabla,
+                        tabla
+                );
 
         tarjetaTabla.setPadding(
                 new Insets(25)
@@ -529,55 +345,252 @@ public class VentanaHabitaculos {
                 "-fx-border-radius: 16;"
         );
 
-
         // =========================================
-        // BOTÓN VOLVER
-        // =========================================
-
-        HBox contenedorVolver =
-                new HBox(btnVolver);
-
-        contenedorVolver.setAlignment(
-                Pos.CENTER
-        );
-
-
-        // =========================================
-        // ACCIONES
+        // CARGAR DATOS
         // =========================================
 
-        btnGuardar.setOnAction(
-                e -> guardar()
-        );
-
-        btnModificar.setOnAction(
-                e -> modificar()
-        );
-
-        btnEliminar.setOnAction(
-                e -> eliminar()
-        );
-
-        btnLimpiar.setOnAction(
-                e -> limpiar()
-        );
-
-        btnVolver.setOnAction(
-                e -> escenario.close()
-        );
-
+        cargarHabitaculos();
 
         // =========================================
-        // CONTENEDOR PRINCIPAL
+        // SELECCIONAR
         // =========================================
 
-        VBox contenido = new VBox(
-                25,
-                encabezado,
-                tarjetaDatos,
-                tarjetaTabla,
-                contenedorVolver
+        tabla.getSelectionModel()
+                .selectedItemProperty()
+                .addListener(
+                        (observable,
+                         anterior,
+                         seleccionado) -> {
+
+                            if (seleccionado != null) {
+
+                                txtNombre.setText(
+                                        seleccionado.getNombre()
+                                );
+
+                                txtSector.setText(
+                                        seleccionado.getSector()
+                                );
+
+                                txtCapacidad.setText(
+                                        String.valueOf(
+                                                seleccionado.getCapacidad()
+                                        )
+                                );
+
+                                txtEstado.setText(
+                                        seleccionado.getEstado()
+                                );
+
+                                txtObservaciones.setText(
+                                        seleccionado.getObservaciones()
+                                );
+                            }
+                        }
+                );
+
+        // =========================================
+        // AGREGAR
+        // =========================================
+
+        btnAgregar.setOnAction(e -> {
+
+            if (txtNombre.getText().isBlank()
+                    || txtSector.getText().isBlank()
+                    || txtCapacidad.getText().isBlank()
+                    || txtEstado.getText().isBlank()) {
+
+                mostrarAlerta(
+                        Alert.AlertType.WARNING,
+                        "Datos incompletos",
+                        "Complete todos los campos obligatorios."
+                );
+
+                return;
+            }
+
+            int capacidad;
+
+            try {
+
+                capacidad =
+                        Integer.parseInt(
+                                txtCapacidad.getText().trim()
+                        );
+
+            } catch (NumberFormatException ex) {
+
+                mostrarAlerta(
+                        Alert.AlertType.WARNING,
+                        "Capacidad inválida",
+                        "La capacidad debe ser un número entero."
+                );
+
+                return;
+            }
+
+            Habitaculo habitaculo =
+                    new Habitaculo();
+
+            habitaculo.setNombre(
+                    txtNombre.getText().trim()
+            );
+
+            habitaculo.setSector(
+                    txtSector.getText().trim()
+            );
+
+            habitaculo.setCapacidad(
+                    capacidad
+            );
+
+            habitaculo.setEstado(
+                    txtEstado.getText().trim()
+            );
+
+            habitaculo.setObservaciones(
+                    txtObservaciones.getText().trim()
+            );
+
+            habitaculoDAO.agregar(
+                    habitaculo
+            );
+
+            limpiarCampos();
+            cargarHabitaculos();
+        });
+
+        // =========================================
+        // MODIFICAR
+        // =========================================
+
+        btnModificar.setOnAction(e -> {
+
+            Habitaculo seleccionado =
+                    tabla.getSelectionModel()
+                            .getSelectedItem();
+
+            if (seleccionado == null) {
+
+                mostrarAlerta(
+                        Alert.AlertType.WARNING,
+                        "Sin selección",
+                        "Seleccione un habitáculo para modificar."
+                );
+
+                return;
+            }
+
+            if (txtNombre.getText().isBlank()
+                    || txtSector.getText().isBlank()
+                    || txtCapacidad.getText().isBlank()
+                    || txtEstado.getText().isBlank()) {
+
+                mostrarAlerta(
+                        Alert.AlertType.WARNING,
+                        "Datos incompletos",
+                        "Complete todos los campos obligatorios."
+                );
+
+                return;
+            }
+
+            int capacidad;
+
+            try {
+
+                capacidad =
+                        Integer.parseInt(
+                                txtCapacidad.getText().trim()
+                        );
+
+            } catch (NumberFormatException ex) {
+
+                mostrarAlerta(
+                        Alert.AlertType.WARNING,
+                        "Capacidad inválida",
+                        "La capacidad debe ser un número entero."
+                );
+
+                return;
+            }
+
+            seleccionado.setNombre(
+                    txtNombre.getText().trim()
+            );
+
+            seleccionado.setSector(
+                    txtSector.getText().trim()
+            );
+
+            seleccionado.setCapacidad(
+                    capacidad
+            );
+
+            seleccionado.setEstado(
+                    txtEstado.getText().trim()
+            );
+
+            seleccionado.setObservaciones(
+                    txtObservaciones.getText().trim()
+            );
+
+            habitaculoDAO.modificar(
+                    seleccionado
+            );
+
+            limpiarCampos();
+            cargarHabitaculos();
+        });
+
+        // =========================================
+        // ELIMINAR
+        // =========================================
+
+        btnEliminar.setOnAction(e -> {
+
+            Habitaculo seleccionado =
+                    tabla.getSelectionModel()
+                            .getSelectedItem();
+
+            if (seleccionado == null) {
+
+                mostrarAlerta(
+                        Alert.AlertType.WARNING,
+                        "Sin selección",
+                        "Seleccione un habitáculo para eliminar."
+                );
+
+                return;
+            }
+
+            habitaculoDAO.eliminar(
+                    seleccionado.getIdHabitaculo()
+            );
+
+            limpiarCampos();
+            cargarHabitaculos();
+        });
+
+        // =========================================
+        // LIMPIAR
+        // =========================================
+
+        btnLimpiar.setOnAction(e ->
+                limpiarCampos()
         );
+
+        // =========================================
+        // CONTENIDO
+        // =========================================
+
+        VBox contenido =
+                new VBox(
+                        25,
+                        encabezado,
+                        tarjetaDatos,
+                        tarjetaTabla
+                );
 
         contenido.setPadding(
                 new Insets(25, 35, 35, 35)
@@ -590,7 +603,6 @@ public class VentanaHabitaculos {
         contenido.setStyle(
                 "-fx-background-color: #F4F1E8;"
         );
-
 
         // =========================================
         // SCROLL
@@ -606,324 +618,88 @@ public class VentanaHabitaculos {
                 "-fx-background-color: #F4F1E8;"
         );
 
-
-        // =========================================
-        // ESCENA
-        // =========================================
-
-        Scene escena = new Scene(
-                scroll,
-                1100,
-                750
-        );
-
-        escenario.setTitle(
-                "Tatú Carreta - Gestión de Habitáculos"
-        );
-
-        escenario.setMinWidth(900);
-
-        escenario.setMinHeight(650);
-
-        escenario.setScene(escena);
-
-        escenario.setMaximized(true);
-
-        cargarHabitaculos();
-
-        escenario.show();
+        return scroll;
     }
 
-
     // =========================================
-    // CREAR LABEL
+    // ETIQUETA
     // =========================================
 
-    private Label crearLabelCampo(
+    private Label crearEtiqueta(
             String texto) {
 
-        Label label =
+        Label etiqueta =
                 new Label(texto);
 
-        label.setStyle(
+        etiqueta.setStyle(
                 "-fx-font-size: 13px;" +
                 "-fx-font-weight: bold;" +
                 "-fx-text-fill: #445149;"
         );
 
-        return label;
+        return etiqueta;
     }
 
-
     // =========================================
-    // GUARDAR
+    // CAMPO
     // =========================================
 
-    private void guardar() {
+    private VBox crearCampo(
+            Label etiqueta,
+            javafx.scene.control.Control control) {
 
-        String nombre =
-                txtNombre.getText().trim();
+        if (control instanceof TextField campo) {
 
-        String sector =
-                txtSector.getText().trim();
+            campo.setPrefHeight(38);
 
-        String capacidadTexto =
-                txtCapacidad.getText().trim();
-
-        String estado =
-                cmbEstado.getValue();
-
-        String observaciones =
-                txtObservaciones.getText().trim();
-
-        if (nombre.isBlank()
-                || sector.isBlank()) {
-
-            mostrarMensaje(
-                    Alert.AlertType.WARNING,
-                    "Complete los campos obligatorios."
+            campo.setStyle(
+                    "-fx-background-radius: 8;" +
+                    "-fx-border-radius: 8;" +
+                    "-fx-border-color: #D1D8D2;" +
+                    "-fx-padding: 8;"
             );
 
-            return;
+        } else if (control instanceof TextArea area) {
+
+            area.setWrapText(true);
+
+            area.setStyle(
+                    "-fx-background-radius: 8;" +
+                    "-fx-border-radius: 8;" +
+                    "-fx-border-color: #D1D8D2;" +
+                    "-fx-padding: 8;"
+            );
         }
 
-        Integer capacidad = null;
-
-        if (!capacidadTexto.isBlank()) {
-
-            try {
-
-                capacidad =
-                        Integer.parseInt(
-                                capacidadTexto
-                        );
-
-            } catch (NumberFormatException e) {
-
-                mostrarMensaje(
-                        Alert.AlertType.WARNING,
-                        "La capacidad debe ser un número."
+        VBox campo =
+                new VBox(
+                        8,
+                        etiqueta,
+                        control
                 );
 
-                return;
-            }
-        }
-
-        Habitaculo habitaculo =
-                new Habitaculo();
-
-        habitaculo.setNombre(nombre);
-
-        habitaculo.setSector(sector);
-
-        habitaculo.setCapacidad(capacidad);
-
-        habitaculo.setEstado(estado);
-
-        habitaculo.setObservaciones(
-                observaciones
-        );
-
-        habitaculoDAO.agregar(habitaculo);
-
-        cargarHabitaculos();
-
-        limpiar();
-
-        mostrarMensaje(
-                Alert.AlertType.INFORMATION,
-                "Habitáculo agregado correctamente."
-        );
+        return campo;
     }
 
-
     // =========================================
-    // MODIFICAR
-    // =========================================
-
-    private void modificar() {
-
-        if (habitaculoSeleccionado == null) {
-
-            mostrarMensaje(
-                    Alert.AlertType.WARNING,
-                    "Seleccione un habitáculo para modificar."
-            );
-
-            return;
-        }
-
-        String nombre =
-                txtNombre.getText().trim();
-
-        String sector =
-                txtSector.getText().trim();
-
-        String capacidadTexto =
-                txtCapacidad.getText().trim();
-
-        if (nombre.isBlank()
-                || sector.isBlank()) {
-
-            mostrarMensaje(
-                    Alert.AlertType.WARNING,
-                    "Complete los campos obligatorios."
-            );
-
-            return;
-        }
-
-        Integer capacidad = null;
-
-        if (!capacidadTexto.isBlank()) {
-
-            try {
-
-                capacidad =
-                        Integer.parseInt(
-                                capacidadTexto
-                        );
-
-            } catch (NumberFormatException e) {
-
-                mostrarMensaje(
-                        Alert.AlertType.WARNING,
-                        "La capacidad debe ser un número."
-                );
-
-                return;
-            }
-        }
-
-        habitaculoSeleccionado.setNombre(
-                nombre
-        );
-
-        habitaculoSeleccionado.setSector(
-                sector
-        );
-
-        habitaculoSeleccionado.setCapacidad(
-                capacidad
-        );
-
-        habitaculoSeleccionado.setEstado(
-                cmbEstado.getValue()
-        );
-
-        habitaculoSeleccionado.setObservaciones(
-                txtObservaciones
-                        .getText()
-                        .trim()
-        );
-
-        habitaculoDAO.modificar(
-                habitaculoSeleccionado
-        );
-
-        cargarHabitaculos();
-
-        limpiar();
-
-        mostrarMensaje(
-                Alert.AlertType.INFORMATION,
-                "Habitáculo modificado correctamente."
-        );
-    }
-
-
-    // =========================================
-    // ELIMINAR
-    // =========================================
-
-    private void eliminar() {
-
-        if (habitaculoSeleccionado == null) {
-
-            mostrarMensaje(
-                    Alert.AlertType.WARNING,
-                    "Seleccione un habitáculo para eliminar."
-            );
-
-            return;
-        }
-
-        habitaculoDAO.eliminar(
-                habitaculoSeleccionado
-                        .getIdHabitaculo()
-        );
-
-        cargarHabitaculos();
-
-        limpiar();
-
-        mostrarMensaje(
-                Alert.AlertType.INFORMATION,
-                "Habitáculo eliminado correctamente."
-        );
-    }
-
-
-    // =========================================
-    // CARGAR SELECCIONADO
-    // =========================================
-
-    private void cargarHabitaculoSeleccionado(
-            Habitaculo habitaculo) {
-
-        habitaculoSeleccionado =
-                habitaculo;
-
-        txtNombre.setText(
-                habitaculo.getNombre()
-        );
-
-        txtSector.setText(
-                habitaculo.getSector()
-        );
-
-        if (habitaculo.getCapacidad() != null) {
-
-            txtCapacidad.setText(
-                    String.valueOf(
-                            habitaculo.getCapacidad()
-                    )
-            );
-
-        } else {
-
-            txtCapacidad.clear();
-        }
-
-        cmbEstado.setValue(
-                habitaculo.getEstado()
-        );
-
-        txtObservaciones.setText(
-                habitaculo.getObservaciones()
-        );
-    }
-
-
-    // =========================================
-    // CARGAR TABLA
+    // CARGAR
     // =========================================
 
     private void cargarHabitaculos() {
 
-        listaHabitaculos.setAll(
-                habitaculoDAO.listar()
-        );
-    }
+        ObservableList<Habitaculo> lista =
+                FXCollections.observableArrayList(
+                        habitaculoDAO.listar()
+                );
 
+        tabla.setItems(lista);
+    }
 
     // =========================================
     // LIMPIAR
     // =========================================
 
-    private void limpiar() {
-
-        habitaculoSeleccionado = null;
+    private void limpiarCampos() {
 
         txtNombre.clear();
 
@@ -931,7 +707,7 @@ public class VentanaHabitaculos {
 
         txtCapacidad.clear();
 
-        cmbEstado.setValue("Activo");
+        txtEstado.clear();
 
         txtObservaciones.clear();
 
@@ -939,24 +715,55 @@ public class VentanaHabitaculos {
                 .clearSelection();
     }
 
-
     // =========================================
-    // MENSAJES
+    // ALERTA
     // =========================================
 
-    private void mostrarMensaje(
+    private void mostrarAlerta(
             Alert.AlertType tipo,
+            String titulo,
             String mensaje) {
 
         Alert alerta =
                 new Alert(tipo);
 
-        alerta.setTitle("Tatú Carreta");
+        alerta.setTitle(
+                "Tatú Carreta"
+        );
 
-        alerta.setHeaderText(null);
+        alerta.setHeaderText(
+                titulo
+        );
 
-        alerta.setContentText(mensaje);
+        alerta.setContentText(
+                mensaje
+        );
 
         alerta.showAndWait();
+    }
+
+    // =========================================
+    // MOSTRAR
+    // =========================================
+
+    public void mostrar() {
+
+        Stage escenario =
+                new Stage();
+
+        Scene escena =
+                new Scene(
+                        crearContenido(),
+                        900,
+                        700
+                );
+
+        escenario.setTitle(
+                "Tatú Carreta - Habitáculos"
+        );
+
+        escenario.setScene(escena);
+
+        escenario.show();
     }
 }

@@ -1,31 +1,39 @@
 package com.tatucarreta;
 
-import javafx.beans.property.SimpleStringProperty;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.stage.Stage;
-
 
 public class VentanaMovimientos {
-
+private VentanaPrincipal ventanaPrincipal;
+public VentanaMovimientos(VentanaPrincipal ventanaPrincipal) {
+    this.ventanaPrincipal = ventanaPrincipal;
+}
     private final MovimientoDAO movimientoDAO =
             new MovimientoDAO();
 
@@ -35,301 +43,279 @@ public class VentanaMovimientos {
     private final IngresoDAO ingresoDAO =
             new IngresoDAO();
 
+    private final DetalleIngresoDAO detalleIngresoDAO =
+            new DetalleIngresoDAO();
+
+    private final PlantelPermanenteDAO plantelDAO =
+            new PlantelPermanenteDAO();
+
+    private final HabitaculoDAO habitaculoDAO =
+            new HabitaculoDAO();
+
     private TableView<Movimiento> tabla;
+    private FilteredList<Movimiento> movimientosFiltrados;
+    private TextField txtBuscarMovimiento;
+    private ComboBox<String> comboFiltroTipo;
+    private DatePicker datePickerFiltro;
 
     private ComboBox<Animal> comboAnimal;
-
     private ComboBox<Ingreso> comboIngreso;
 
-    private TextField txtFecha;
-
+    private DatePicker datePickerFecha;
     private ComboBox<String> comboTipo;
-
     private TextField txtCantidad;
-
     private TextField txtDestino;
-
     private TextArea txtObservaciones;
 
+    private ComboBox<String> comboUbicacion;
+    private ComboBox<Habitaculo> comboHabitaculo;
 
-    // =========================================================
-    // COLORES
-    // =========================================================
-
-    private final String VERDE =
-            "#23452C";
-
-    private final String VERDE_TITULO =
-            "#30463A";
-
-    private final String FONDO =
-            "#F2F0E6";
-
-    private final String BORDE =
-            "#C7D0C8";
-
-    private final String ROJO =
-            "#A94442";
+    private Label lblDisponible;
+    private Label lblUbicacion;
+    private Label lblHabitaculo;
 
 
     // =========================================================
-    // MOSTRAR VENTANA
+    // CREAR CONTENIDO
     // =========================================================
 
-    public void mostrar(Stage escenario) {
-
-        /*
-         * IMPORTANTE:
-         *
-         * Ya no utilizamos "escenario" como la ventana
-         * de Movimientos.
-         *
-         * Creamos una ventana nueva para que el Panel Principal
-         * quede abierto detrás.
-         */
-
-        Stage ventana =
-                new Stage();
-
-
-        // =====================================================
-        // ENCABEZADO
-        // =====================================================
-
-        Label ruta =
-                new Label(
-                        "Inicio / Gestión de Movimientos"
-                );
-
-
-        ruta.setStyle(
-                "-fx-font-size: 12px;" +
-                "-fx-text-fill: #7A827B;"
-        );
-
+    public ScrollPane crearContenido() {
 
         Label titulo =
                 new Label(
-                        "Movimientos de Animales"
+                        "MOVIMIENTOS DE ANIMALES"
                 );
-
 
         titulo.setStyle(
-                "-fx-font-size: 26px;" +
+                "-fx-font-size: 24px;" +
                 "-fx-font-weight: bold;" +
-                "-fx-text-fill: " +
-                        VERDE_TITULO +
-                        ";"
+                "-fx-text-fill: #23452C;"
         );
-
-
-        Label subtitulo =
-                new Label(
-                        "Registre y consulte los movimientos de los animales de la reserva"
-                );
-
-
-        subtitulo.setStyle(
-                "-fx-font-size: 13px;" +
-                "-fx-text-fill: #68746B;"
-        );
-
-
-        VBox encabezado =
-                new VBox(
-                        5,
-                        ruta,
-                        titulo,
-                        subtitulo
-                );
 
 
         // =====================================================
-        // CAMPOS
+        // ANIMAL
         // =====================================================
 
         comboAnimal =
                 new ComboBox<>();
 
-
-        comboAnimal.setMaxWidth(
-                Double.MAX_VALUE
-        );
-
+        comboAnimal.setPrefWidth(300);
 
         comboAnimal.setPromptText(
                 "Seleccione un animal"
         );
 
+        comboAnimal.setCellFactory(lista -> new javafx.scene.control.ListCell<Animal>() {
+            @Override
+            protected void updateItem(Animal animal, boolean vacio) {
+                super.updateItem(animal, vacio);
+                setText(vacio || animal == null ? null : animal.getNombreVulgar());
+            }
+        });
+
+        comboAnimal.setButtonCell(new javafx.scene.control.ListCell<Animal>() {
+            @Override
+            protected void updateItem(Animal animal, boolean vacio) {
+                super.updateItem(animal, vacio);
+                setText(vacio || animal == null ? null : animal.getNombreVulgar());
+            }
+        });
 
         cargarAnimales();
 
-
-        configurarComboAnimal();
-
-
-        comboAnimal.setOnAction(
-                e ->
-                        cargarIngresosPorAnimal()
+        comboAnimal.setOnAction(e ->
+                cargarIngresosPorAnimal()
         );
 
 
-        // -----------------------------------------------------
+        // =====================================================
         // INGRESO / ACTA
-        // -----------------------------------------------------
+        // =====================================================
 
         comboIngreso =
                 new ComboBox<>();
 
-
-        comboIngreso.setMaxWidth(
-                Double.MAX_VALUE
-        );
-
+        comboIngreso.setPrefWidth(300);
 
         comboIngreso.setPromptText(
                 "Seleccione un animal primero"
         );
 
+        comboIngreso.setCellFactory(lista -> new javafx.scene.control.ListCell<Ingreso>() {
+            @Override
+            protected void updateItem(Ingreso ingreso, boolean vacio) {
+                super.updateItem(ingreso, vacio);
+                setText(vacio || ingreso == null
+                        ? null
+                        : "Acta " + ingreso.getNumeroActa()
+                          + " — " + ingreso.getFechaIngreso());
+            }
+        });
 
-        configurarComboIngreso();
+        comboIngreso.setButtonCell(new javafx.scene.control.ListCell<Ingreso>() {
+            @Override
+            protected void updateItem(Ingreso ingreso, boolean vacio) {
+                super.updateItem(ingreso, vacio);
+                setText(vacio || ingreso == null
+                        ? null
+                        : "Acta " + ingreso.getNumeroActa()
+                          + " — " + ingreso.getFechaIngreso());
+            }
+        });
 
-
-        // -----------------------------------------------------
-        // FECHA
-        // -----------------------------------------------------
-
-        txtFecha =
-                new TextField();
-
-
-        txtFecha.setPromptText(
-                "Ej: 25/08/2026"
+        comboIngreso.setOnAction(e ->
+                actualizarCantidadDisponible()
         );
 
 
-        // -----------------------------------------------------
+        // =====================================================
+        // DISPONIBLE
+        // =====================================================
+
+        lblDisponible =
+                new Label(
+                        "Disponible en cuarentena: -"
+                );
+
+        lblDisponible.setStyle(
+                "-fx-font-weight: bold;" +
+                "-fx-text-fill: #23452C;"
+        );
+
+
+        // =====================================================
+        // FECHA
+        // =====================================================
+
+        datePickerFecha =
+                new DatePicker();
+
+        datePickerFecha.setPromptText(
+                "dd/MM/yyyy"
+        );
+
+        DateTimeFormatter formatoFecha =
+                DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+        datePickerFecha.setConverter(
+                new javafx.util.StringConverter<LocalDate>() {
+                    @Override
+                    public String toString(LocalDate fecha) {
+                        return fecha == null ? "" : formatoFecha.format(fecha);
+                    }
+
+                    @Override
+                    public LocalDate fromString(String texto) {
+                        if (texto == null || texto.isBlank()) {
+                            return null;
+                        }
+                        try {
+                            return LocalDate.parse(texto.trim(), formatoFecha);
+                        } catch (DateTimeParseException e) {
+                            return null;
+                        }
+                    }
+                }
+        );
+
+
+        // =====================================================
         // TIPO
-        // -----------------------------------------------------
+        // =====================================================
 
         comboTipo =
                 new ComboBox<>();
 
-
         comboTipo.setItems(
                 FXCollections.observableArrayList(
-                        "LIBERACIÓN",
+                        "LIBERACION",
                         "TRASLADO",
-                        "FALLECIMIENTO"
+                        "FALLECIMIENTO",
+                        "PLANTEL PERMANENTE"
                 )
         );
 
-
-        comboTipo.setMaxWidth(
-                Double.MAX_VALUE
-        );
-
+        comboTipo.setPrefWidth(300);
 
         comboTipo.setPromptText(
                 "Seleccione el tipo"
         );
 
 
-        // -----------------------------------------------------
+        // =====================================================
         // CANTIDAD
-        // -----------------------------------------------------
+        // =====================================================
 
         txtCantidad =
                 new TextField();
 
-
         txtCantidad.setPromptText(
-                "Ingrese la cantidad"
+                "Cantidad de animales"
         );
 
 
-        // -----------------------------------------------------
+        // =====================================================
         // DESTINO
-        // -----------------------------------------------------
+        // =====================================================
 
         txtDestino =
                 new TextField();
-
 
         txtDestino.setPromptText(
                 "Solo si corresponde"
         );
 
 
-        // -----------------------------------------------------
+        // =====================================================
+        // UBICACIÓN PLANTEL
+        // =====================================================
+
+        comboUbicacion =
+                new ComboBox<>();
+
+        comboUbicacion.setPrefWidth(300);
+
+        comboUbicacion.setPromptText(
+                "Seleccione la ubicación"
+        );
+
+        comboUbicacion.getItems().addAll(
+                "Habitáculo",
+                "Recinto",
+                "Campo abierto",
+                "Otro"
+        );
+
+
+        // =====================================================
+        // HABITÁCULO
+        // =====================================================
+
+        comboHabitaculo =
+                new ComboBox<>();
+
+        comboHabitaculo.setPrefWidth(300);
+
+        comboHabitaculo.setPromptText(
+                "Seleccione un habitáculo"
+        );
+
+        cargarHabitaculos();
+
+
+        // =====================================================
         // OBSERVACIONES
-        // -----------------------------------------------------
+        // =====================================================
 
         txtObservaciones =
                 new TextArea();
 
-
         txtObservaciones.setPromptText(
-                "Ingrese observaciones adicionales"
+                "Observaciones"
         );
 
-
-        txtObservaciones.setPrefRowCount(
-                2
-        );
-
-
-        txtObservaciones.setWrapText(
-                true
-        );
-
-
-        // =====================================================
-        // ESTILO CAMPOS
-        // =====================================================
-
-        String estiloCampo =
-                "-fx-background-color: #FFFFFF;" +
-                "-fx-background-radius: 8;" +
-                "-fx-border-color: #C7D0C8;" +
-                "-fx-border-radius: 8;" +
-                "-fx-border-width: 1;" +
-                "-fx-font-size: 13px;";
-
-
-        comboAnimal.setStyle(
-                estiloCampo
-        );
-
-
-        comboIngreso.setStyle(
-                estiloCampo
-        );
-
-
-        txtFecha.setStyle(
-                estiloCampo
-        );
-
-
-        comboTipo.setStyle(
-                estiloCampo
-        );
-
-
-        txtCantidad.setStyle(
-                estiloCampo
-        );
-
-
-        txtDestino.setStyle(
-                estiloCampo
-        );
-
-
-        txtObservaciones.setStyle(
-                estiloCampo
-        );
+        txtObservaciones.setPrefRowCount(3);
 
 
         // =====================================================
@@ -339,60 +325,18 @@ public class VentanaMovimientos {
         GridPane formulario =
                 new GridPane();
 
-
-        formulario.setHgap(
-                15
+        formulario.setHgap(10);
+        formulario.setVgap(10);
+        formulario.setPadding(
+                new Insets(20)
         );
 
-
-        formulario.setVgap(
-                10
-        );
-
-
-        formulario.setAlignment(
-                Pos.CENTER
-        );
-
-
-        ColumnConstraints columnaLabel =
-                new ColumnConstraints();
-
-
-        columnaLabel.setPercentWidth(
-                28
-        );
-
-
-        ColumnConstraints columnaCampo =
-                new ColumnConstraints();
-
-
-        columnaCampo.setPercentWidth(
-                72
-        );
-
-
-        formulario
-                .getColumnConstraints()
-                .addAll(
-                        columnaLabel,
-                        columnaCampo
-                );
-
-
-        // =====================================================
-        // ANIMAL
-        // =====================================================
 
         formulario.add(
-                crearLabelObligatorio(
-                        "Animal"
-                ),
+                crearLabelCampo("Animal", true),
                 0,
                 0
         );
-
 
         formulario.add(
                 comboAnimal,
@@ -401,18 +345,11 @@ public class VentanaMovimientos {
         );
 
 
-        // =====================================================
-        // ACTA
-        // =====================================================
-
         formulario.add(
-                crearLabelObligatorio(
-                        "N° de Acta"
-                ),
+                crearLabelCampo("N° de Acta", true),
                 0,
                 1
         );
-
 
         formulario.add(
                 comboIngreso,
@@ -421,83 +358,108 @@ public class VentanaMovimientos {
         );
 
 
-        // =====================================================
-        // FECHA
-        // =====================================================
-
         formulario.add(
-                crearLabelObligatorio(
-                        "Fecha"
-                ),
+                new Label("Disponibilidad:"),
                 0,
                 2
         );
 
-
         formulario.add(
-                txtFecha,
+                lblDisponible,
                 1,
                 2
         );
 
 
-        // =====================================================
-        // TIPO
-        // =====================================================
-
         formulario.add(
-                crearLabelObligatorio(
-                        "Tipo de movimiento"
-                ),
+                crearLabelCampo("Fecha", true),
                 0,
                 3
         );
 
+        formulario.add(
+                datePickerFecha,
+                1,
+                3
+        );
+
+
+        formulario.add(
+                crearLabelCampo("Tipo de movimiento", true),
+                0,
+                4
+        );
 
         formulario.add(
                 comboTipo,
                 1,
-                3
-        );
-
-
-        // =====================================================
-        // CANTIDAD
-        // =====================================================
-
-        formulario.add(
-                crearLabelObligatorio(
-                        "Cantidad"
-                ),
-                0,
                 4
         );
 
+
+        formulario.add(
+                crearLabelCampo("Cantidad", true),
+                0,
+                5
+        );
 
         formulario.add(
                 txtCantidad,
                 1,
-                4
-        );
-
-
-        // =====================================================
-        // DESTINO
-        // =====================================================
-
-        formulario.add(
-                crearLabelCampo(
-                        "Destino"
-                ),
-                0,
                 5
         );
 
+
+        formulario.add(
+                crearLabelCampo("Destino"),
+                0,
+                6
+        );
 
         formulario.add(
                 txtDestino,
                 1,
-                5
+                6
+        );
+
+
+        // =====================================================
+        // UBICACIÓN
+        // =====================================================
+
+        lblUbicacion =
+                crearLabelCampo("Ubicación", true);
+
+        formulario.add(
+                lblUbicacion,
+                0,
+                7
+        );
+
+        formulario.add(
+                comboUbicacion,
+                1,
+                7
+        );
+
+
+        // =====================================================
+        // HABITÁCULO
+        // =====================================================
+
+        lblHabitaculo =
+                crearLabelCampo("Habitáculo", true);
+
+        formulario.add(
+                lblHabitaculo,
+                0,
+                8
+        );
+
+        formulario.add(
+                comboHabitaculo,
+                1,
+                8
         );
 
 
@@ -506,59 +468,70 @@ public class VentanaMovimientos {
         // =====================================================
 
         formulario.add(
-                crearLabelCampo(
-                        "Observaciones"
-                ),
+                crearLabelCampo("Observaciones"),
                 0,
-                6
+                9
         );
-
 
         formulario.add(
                 txtObservaciones,
                 1,
-                6
+                9
         );
 
 
         // =====================================================
-        // TARJETA FORMULARIO
+        // VISIBILIDAD PLANTEL
         // =====================================================
 
-        Label tituloFormulario =
-                new Label(
-                        "Datos del movimiento"
-                );
+        comboTipo.setOnAction(e -> {
+
+            actualizarCamposPlantel();
+
+            actualizarCantidadDisponible();
+        });
 
 
-        tituloFormulario.setStyle(
-                "-fx-font-size: 18px;" +
-                "-fx-font-weight: bold;" +
-                "-fx-text-fill: " +
-                        VERDE_TITULO +
-                        ";"
+        lblUbicacion.setVisible(false);
+        lblUbicacion.setManaged(false);
+
+        comboUbicacion.setVisible(false);
+        comboUbicacion.setManaged(false);
+
+        lblHabitaculo.setVisible(false);
+        lblHabitaculo.setManaged(false);
+
+        comboHabitaculo.setVisible(false);
+        comboHabitaculo.setManaged(false);
+
+
+        // =====================================================
+        // VISIBILIDAD HABITÁCULO
+        // =====================================================
+
+        comboUbicacion.setOnAction(e ->
+                actualizarHabitaculo()
         );
 
-
-        VBox tarjetaFormulario =
-                new VBox(
-                        18,
-                        tituloFormulario,
-                        formulario
-                );
-
-
-        tarjetaFormulario.setPadding(
-                new Insets(22)
+        comboAnimal.valueProperty().addListener(
+                (obs, viejo, nuevo) -> marcarCampoError(comboAnimal, nuevo == null)
         );
 
+        comboIngreso.valueProperty().addListener(
+                (obs, viejo, nuevo) -> marcarCampoError(comboIngreso, nuevo == null)
+        );
 
-        tarjetaFormulario.setStyle(
-                "-fx-background-color: #FFFFFF;" +
-                "-fx-background-radius: 16;" +
-                "-fx-border-color: #D5DBD5;" +
-                "-fx-border-radius: 16;" +
-                "-fx-border-width: 1;"
+        datePickerFecha.valueProperty().addListener(
+                (obs, viejo, nuevo) -> marcarCampoError(datePickerFecha, nuevo == null)
+        );
+
+        comboTipo.valueProperty().addListener(
+                (obs, viejo, nuevo) -> marcarCampoError(comboTipo, nuevo == null)
+        );
+
+        txtCantidad.textProperty().addListener(
+                (obs, viejo, nuevo) -> marcarCampoError(
+                        txtCantidad, nuevo == null || nuevo.isBlank())
         );
 
 
@@ -566,31 +539,19 @@ public class VentanaMovimientos {
         // BOTÓN REGISTRAR
         // =====================================================
 
-        Button btnRegistrar =
+        Button btnGuardar =
                 new Button(
                         "REGISTRAR MOVIMIENTO"
                 );
 
-
-        btnRegistrar.setPrefHeight(
-                38
-        );
-
-
-        btnRegistrar.setStyle(
-                "-fx-background-color: " +
-                        VERDE +
-                        ";" +
+        btnGuardar.setStyle(
+                "-fx-background-color: #23452C;" +
                 "-fx-text-fill: white;" +
-                "-fx-font-weight: bold;" +
-                "-fx-background-radius: 8;" +
-                "-fx-padding: 0 20 0 20;"
+                "-fx-font-weight: bold;"
         );
 
-
-        btnRegistrar.setOnAction(
-                e ->
-                        guardarMovimiento()
+        btnGuardar.setOnAction(e ->
+                guardarMovimiento()
         );
 
 
@@ -603,189 +564,404 @@ public class VentanaMovimientos {
                         "LIMPIAR"
                 );
 
-
-        btnLimpiar.setPrefHeight(
-                38
+        btnLimpiar.setOnAction(e ->
+                limpiarCampos()
         );
 
-
-        btnLimpiar.setStyle(
-                "-fx-background-color: #FFFFFF;" +
-                "-fx-text-fill: " +
-                        VERDE_TITULO +
-                        ";" +
-                "-fx-font-weight: bold;" +
-                "-fx-border-color: #C7D0C8;" +
-                "-fx-border-radius: 8;" +
-                "-fx-background-radius: 8;" +
-                "-fx-padding: 0 20 0 20;"
-        );
-
-
-        btnLimpiar.setOnAction(
-                e ->
-                        limpiarCampos()
-        );
-
-
-        // =====================================================
-        // BOTÓN CERRAR
-        // =====================================================
-
-        Button btnCerrar =
-                new Button(
-                        "←  VOLVER"
-                );
-
-
-        btnCerrar.setPrefHeight(
-                38
-        );
-
-
-        btnCerrar.setStyle(
-                "-fx-background-color: #FFFFFF;" +
-                "-fx-text-fill: " +
-                        VERDE_TITULO +
-                        ";" +
-                "-fx-font-weight: bold;" +
-                "-fx-border-color: #B8C7B8;" +
-                "-fx-border-radius: 8;" +
-                "-fx-background-radius: 8;" +
-                "-fx-padding: 0 20 0 20;"
-        );
-
-
-        btnCerrar.setOnAction(
-                e ->
-                        ventana.close()
-        );
-
-
-        // =====================================================
-        // BOTONES
-        // =====================================================
 
         HBox botones =
                 new HBox(
                         10,
-                        btnRegistrar,
+                        btnGuardar,
                         btnLimpiar
                 );
 
-
         botones.setAlignment(
-                Pos.CENTER_RIGHT
+                Pos.CENTER
         );
 
 
         // =====================================================
-        // TABLA
+        // FILTROS DEL HISTORIAL
         // =====================================================
 
-        tabla =
-                new TableView<>();
+        Label lblBuscar = new Label("Buscar:");
+        lblBuscar.setStyle(
+                "-fx-font-weight: bold;" +
+                "-fx-text-fill: #445149;"
+        );
 
+        txtBuscarMovimiento = new TextField();
+        txtBuscarMovimiento.setPromptText(
+                "Animal, especie, acta o destino..."
+        );
+        txtBuscarMovimiento.setPrefWidth(280);
+
+        Label lblFiltroTipo = new Label("Tipo:");
+        lblFiltroTipo.setStyle(
+                "-fx-font-weight: bold;" +
+                "-fx-text-fill: #445149;"
+        );
+
+        comboFiltroTipo = new ComboBox<>();
+        comboFiltroTipo.getItems().addAll(
+                "TODOS",
+                "LIBERACION",
+                "TRASLADO",
+                "FALLECIMIENTO",
+                "PLANTEL PERMANENTE"
+        );
+        comboFiltroTipo.setValue("TODOS");
+        comboFiltroTipo.setPrefWidth(190);
+
+        Label lblFiltroFecha = new Label("Fecha:");
+        lblFiltroFecha.setStyle(
+                "-fx-font-weight: bold;" +
+                "-fx-text-fill: #445149;"
+        );
+
+        datePickerFiltro = new DatePicker();
+        datePickerFiltro.setPromptText("dd/MM/yyyy");
+        datePickerFiltro.setPrefWidth(140);
+
+        DateTimeFormatter formatoFiltro =
+                DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+        datePickerFiltro.setConverter(
+                new javafx.util.StringConverter<LocalDate>() {
+                    @Override
+                    public String toString(LocalDate fecha) {
+                        return fecha == null
+                                ? ""
+                                : formatoFiltro.format(fecha);
+                    }
+
+                    @Override
+                    public LocalDate fromString(String texto) {
+                        if (texto == null || texto.isBlank()) {
+                            return null;
+                        }
+
+                        try {
+                            return LocalDate.parse(
+                                    texto.trim(),
+                                    formatoFiltro
+                            );
+                        } catch (DateTimeParseException e) {
+                            return null;
+                        }
+                    }
+                }
+        );
+
+        Button btnLimpiarFiltros =
+                new Button("LIMPIAR FILTROS");
+
+        btnLimpiarFiltros.setStyle(
+                "-fx-background-color: #E8ECE8;" +
+                "-fx-text-fill: #23452C;" +
+                "-fx-font-weight: bold;"
+        );
+
+        HBox filtros =
+                new HBox(
+                        10,
+                        lblBuscar,
+                        txtBuscarMovimiento,
+                        lblFiltroTipo,
+                        comboFiltroTipo,
+                        lblFiltroFecha,
+                        datePickerFiltro,
+                        btnLimpiarFiltros
+                );
+
+        filtros.setAlignment(Pos.CENTER_LEFT);
+        filtros.setPadding(
+                new Insets(10, 20, 10, 20)
+        );
+
+
+        // =====================================================
+        // TABLA - HISTORIAL DE MOVIMIENTOS
+        // =====================================================
+
+        tabla = new TableView<>();
+
+        TableColumn<Movimiento, String> columnaAnimal =
+                new TableColumn<>("Animal");
+
+        columnaAnimal.setCellValueFactory(
+                new PropertyValueFactory<>("nombreAnimal")
+        );
+        columnaAnimal.setPrefWidth(150);
+
+
+        TableColumn<Movimiento, String> columnaEspecie =
+                new TableColumn<>("Especie");
+
+        columnaEspecie.setCellValueFactory(
+                new PropertyValueFactory<>("especie")
+        );
+        columnaEspecie.setPrefWidth(150);
+
+
+        TableColumn<Movimiento, String> columnaActa =
+                new TableColumn<>("N° de Acta");
+
+        columnaActa.setCellValueFactory(
+                new PropertyValueFactory<>("numeroActa")
+        );
+        columnaActa.setPrefWidth(110);
+
+
+        TableColumn<Movimiento, String> columnaFecha =
+                new TableColumn<>("Fecha");
+
+        columnaFecha.setCellValueFactory(
+                new PropertyValueFactory<>("fechaMovimiento")
+        );
+        columnaFecha.setPrefWidth(100);
+
+
+        TableColumn<Movimiento, String> columnaTipo =
+                new TableColumn<>("Movimiento");
+
+        columnaTipo.setCellValueFactory(
+                new PropertyValueFactory<>("tipoMovimiento")
+        );
+        columnaTipo.setPrefWidth(160);
+
+
+        TableColumn<Movimiento, Integer> columnaCantidad =
+                new TableColumn<>("Cantidad");
+
+        columnaCantidad.setCellValueFactory(
+                new PropertyValueFactory<>("cantidad")
+        );
+        columnaCantidad.setPrefWidth(80);
+
+
+        TableColumn<Movimiento, String> columnaDestino =
+                new TableColumn<>("Destino");
+
+        columnaDestino.setCellValueFactory(
+                new PropertyValueFactory<>("destino")
+        );
+        columnaDestino.setPrefWidth(150);
+
+
+        TableColumn<Movimiento, String> columnaObservaciones =
+                new TableColumn<>("Observaciones");
+
+        columnaObservaciones.setCellValueFactory(
+                new PropertyValueFactory<>("observaciones")
+        );
+        columnaObservaciones.setPrefWidth(200);
+
+
+        tabla.getColumns().addAll(
+                columnaAnimal,
+                columnaEspecie,
+                columnaActa,
+                columnaFecha,
+                columnaTipo,
+                columnaCantidad,
+                columnaDestino,
+                columnaObservaciones
+        );
+
+        tabla.setPrefHeight(380);
+        tabla.setMinHeight(300);
 
         tabla.setColumnResizePolicy(
                 TableView.CONSTRAINED_RESIZE_POLICY
         );
+        tabla.setOnMouseClicked(event -> {
+
+            if (event.getClickCount() == 2) {
+
+                Movimiento seleccionado =
+                        tabla.getSelectionModel().getSelectedItem();
+
+                if (seleccionado != null && ventanaPrincipal != null) {
+
+                    int idAnimal =
+                            obtenerIdAnimalPorDetalle(
+                                    seleccionado.getIdDetalle()
+                            );
+
+                    if (idAnimal > 0) {
+                        ventanaPrincipal.mostrarFichaAnimalDesdeMovimientos(
+                                idAnimal
+                        );
+                    }
+                }
+            }
+        });
 
 
-        configurarTabla();
+        // =====================================================
+        // APLICAR FILTROS
+        // =====================================================
+
+        Runnable aplicarFiltros = () -> {
+
+            if (movimientosFiltrados == null) {
+                return;
+            }
+
+            String texto =
+                    txtBuscarMovimiento.getText()
+                            .trim()
+                            .toLowerCase();
+
+            String tipo =
+                    comboFiltroTipo.getValue();
+
+            LocalDate fechaSeleccionada =
+                    datePickerFiltro.getValue();
+
+            String fechaTexto =
+                    fechaSeleccionada == null
+                            ? null
+                            : formatoFiltro.format(
+                                    fechaSeleccionada
+                            );
+
+            movimientosFiltrados.setPredicate(movimiento -> {
+
+                if (movimiento == null) {
+                    return false;
+                }
+
+                // Buscar por animal, especie, acta o destino
+                if (!texto.isEmpty()) {
+
+                    String animal =
+                            movimiento.getNombreAnimal() == null
+                                    ? ""
+                                    : movimiento.getNombreAnimal()
+                                            .toLowerCase();
+
+                    String especie =
+                            movimiento.getEspecie() == null
+                                    ? ""
+                                    : movimiento.getEspecie()
+                                            .toLowerCase();
+
+                    String acta =
+                            movimiento.getNumeroActa() == null
+                                    ? ""
+                                    : movimiento.getNumeroActa()
+                                            .toLowerCase();
+
+                    String destino =
+                            movimiento.getDestino() == null
+                                    ? ""
+                                    : movimiento.getDestino()
+                                            .toLowerCase();
+
+                    if (!animal.contains(texto)
+                            && !especie.contains(texto)
+                            && !acta.contains(texto)
+                            && !destino.contains(texto)) {
+
+                        return false;
+                    }
+                }
+
+                // Filtrar por tipo
+                if (tipo != null
+                        && !"TODOS".equals(tipo)
+                        && !tipo.equals(
+                                movimiento.getTipoMovimiento()
+                        )) {
+
+                    return false;
+                }
+
+                // Filtrar por fecha
+                if (fechaTexto != null
+                        && !fechaTexto.equals(
+                                movimiento.getFechaMovimiento()
+                        )) {
+
+                    return false;
+                }
+
+                return true;
+            });
+        };
+
+
+        txtBuscarMovimiento.textProperty()
+                .addListener(
+                        (obs, viejo, nuevo) ->
+                                aplicarFiltros.run()
+                );
+
+        comboFiltroTipo.valueProperty()
+                .addListener(
+                        (obs, viejo, nuevo) ->
+                                aplicarFiltros.run()
+                );
+
+        datePickerFiltro.valueProperty()
+                .addListener(
+                        (obs, viejo, nuevo) ->
+                                aplicarFiltros.run()
+                );
+
+        btnLimpiarFiltros.setOnAction(e -> {
+
+            txtBuscarMovimiento.clear();
+            comboFiltroTipo.setValue("TODOS");
+            datePickerFiltro.setValue(null);
+
+            aplicarFiltros.run();
+        });
 
 
         cargarMovimientos();
 
 
         // =====================================================
-        // TARJETA TABLA
+        // CONTENEDOR SUPERIOR
         // =====================================================
 
-        Label tituloTabla =
-                new Label(
-                        "Historial de movimientos"
-                );
-
-
-        tituloTabla.setStyle(
-                "-fx-font-size: 18px;" +
-                "-fx-font-weight: bold;" +
-                "-fx-text-fill: " +
-                        VERDE_TITULO +
-                        ";"
-        );
-
-
-        Label ayuda =
-                new Label(
-                        "Registro histórico de los movimientos realizados."
-                );
-
-
-        ayuda.setStyle(
-                "-fx-font-size: 12px;" +
-                "-fx-text-fill: #7A8580;"
-        );
-
-
-        VBox tarjetaTabla =
+        VBox parteSuperior =
                 new VBox(
-                        10,
-                        tituloTabla,
-                        ayuda,
-                        tabla
-                );
-
-
-        tarjetaTabla.setPadding(
-                new Insets(18)
-        );
-
-
-        tarjetaTabla.setStyle(
-                "-fx-background-color: #FFFFFF;" +
-                "-fx-background-radius: 16;" +
-                "-fx-border-color: #D5DBD5;" +
-                "-fx-border-radius: 16;" +
-                "-fx-border-width: 1;"
-        );
-
-
-        // =====================================================
-        // CONTENIDO
-        // =====================================================
-
-        VBox contenido =
-                new VBox(
-                        16,
-                        encabezado,
-                        tarjetaFormulario,
+                        15,
+                        titulo,
+                        formulario,
                         botones,
-                        tarjetaTabla,
-                        btnCerrar
+                        filtros
                 );
 
-
-        contenido.setPadding(
-                new Insets(
-                        25,
-                        30,
-                        25,
-                        30
-                )
+        parteSuperior.setAlignment(
+                Pos.CENTER
         );
 
 
-        contenido.setStyle(
-                "-fx-background-color: " +
-                        FONDO +
-                        ";"
+        // =====================================================
+        // CONTENEDOR PRINCIPAL
+        // =====================================================
+
+        BorderPane contenedor =
+                new BorderPane();
+
+        contenedor.setTop(
+                parteSuperior
+        );
+
+        contenedor.setCenter(
+                tabla
         );
 
 
-        contenido.setFillWidth(
-                true
+        BorderPane.setMargin(
+                tabla,
+                new Insets(20)
         );
 
 
@@ -795,406 +971,25 @@ public class VentanaMovimientos {
 
         ScrollPane scroll =
                 new ScrollPane(
-                        contenido
+                        contenedor
                 );
 
+        scroll.setFitToWidth(true);
+        scroll.setVvalue(0);
 
-        scroll.setFitToWidth(
-                true
-        );
-
+        scroll.setFitToHeight(false);
 
         scroll.setHbarPolicy(
                 ScrollPane.ScrollBarPolicy.NEVER
         );
 
-
-        scroll.setVbarPolicy(
-                ScrollPane.ScrollBarPolicy.AS_NEEDED
-        );
-
-
-        scroll.setPannable(
-                true
-        );
-
-
         scroll.setStyle(
-                "-fx-background: " +
-                        FONDO +
-                        ";" +
-                "-fx-background-color: " +
-                        FONDO +
-                        ";"
+                "-fx-background: #F4F2EA;" +
+                "-fx-background-color: #F4F2EA;"
         );
 
 
-        // =====================================================
-        // ESCENA
-        // =====================================================
-
-        Scene escena =
-                new Scene(
-                        scroll,
-                        950,
-                        750
-                );
-
-
-        ventana.setTitle(
-                "Tatú Carreta - Movimientos"
-        );
-
-
-        ventana.setScene(
-                escena
-        );
-
-
-        ventana.setMinWidth(
-                850
-        );
-
-
-        ventana.setMinHeight(
-                650
-        );
-
-
-        ventana.setWidth(
-                950
-        );
-
-
-        ventana.setHeight(
-                750
-        );
-
-
-        /*
-         * Si conocemos la posición de la ventana principal,
-         * ubicamos Movimientos al costado.
-         */
-
-        if (
-                escenario != null
-        ) {
-
-            ventana.setX(
-                    escenario.getX()
-                            +
-                    escenario.getWidth()
-                            -
-                    950
-            );
-
-
-            ventana.setY(
-                    escenario.getY()
-                            +
-                    50
-            );
-        }
-
-
-        // =====================================================
-        // MOSTRAR
-        // =====================================================
-
-        ventana.show();
-    }
-
-
-    // =========================================================
-    // CONFIGURAR COMBO ANIMAL
-    // =========================================================
-
-    private void configurarComboAnimal() {
-
-        comboAnimal.setCellFactory(
-                lista ->
-                        new ListCell<>() {
-
-                            @Override
-                            protected void updateItem(
-                                    Animal animal,
-                                    boolean vacio
-                            ) {
-
-                                super.updateItem(
-                                        animal,
-                                        vacio
-                                );
-
-
-                                if (
-                                        vacio
-                                                ||
-                                        animal == null
-                                ) {
-
-                                    setText(
-                                            null
-                                    );
-
-                                } else {
-
-                                    setText(
-                                            animal.getNombreVulgar()
-                                    );
-                                }
-                            }
-                        }
-        );
-
-
-        comboAnimal.setButtonCell(
-                new ListCell<>() {
-
-                    @Override
-                    protected void updateItem(
-                            Animal animal,
-                            boolean vacio
-                    ) {
-
-                        super.updateItem(
-                                animal,
-                                vacio
-                        );
-
-
-                        if (
-                                vacio
-                                        ||
-                                animal == null
-                        ) {
-
-                            setText(
-                                    null
-                            );
-
-                        } else {
-
-                            setText(
-                                    animal.getNombreVulgar()
-                            );
-                        }
-                    }
-                }
-        );
-    }
-
-
-    // =========================================================
-    // CONFIGURAR COMBO INGRESO
-    // =========================================================
-
-    private void configurarComboIngreso() {
-
-        comboIngreso.setCellFactory(
-                lista ->
-                        new ListCell<>() {
-
-                            @Override
-                            protected void updateItem(
-                                    Ingreso ingreso,
-                                    boolean vacio
-                            ) {
-
-                                super.updateItem(
-                                        ingreso,
-                                        vacio
-                                );
-
-
-                                if (
-                                        vacio
-                                                ||
-                                        ingreso == null
-                                ) {
-
-                                    setText(
-                                            null
-                                    );
-
-                                } else {
-
-                                    setText(
-                                            ingreso.getNumeroActa()
-                                    );
-                                }
-                            }
-                        }
-        );
-
-
-        comboIngreso.setButtonCell(
-                new ListCell<>() {
-
-                    @Override
-                    protected void updateItem(
-                            Ingreso ingreso,
-                            boolean vacio
-                    ) {
-
-                        super.updateItem(
-                                ingreso,
-                                vacio
-                        );
-
-
-                        if (
-                                vacio
-                                        ||
-                                ingreso == null
-                        ) {
-
-                            setText(
-                                    null
-                            );
-
-                        } else {
-
-                            setText(
-                                    ingreso.getNumeroActa()
-                            );
-                        }
-                    }
-                }
-        );
-    }
-
-
-    // =========================================================
-    // CONFIGURAR TABLA
-    // =========================================================
-
-    private void configurarTabla() {
-
-        tabla.getColumns().clear();
-
-
-        // -----------------------------------------------------
-        // ANIMAL
-        // -----------------------------------------------------
-
-        TableColumn<Movimiento, String>
-                columnaAnimal =
-                new TableColumn<>(
-                        "Animal"
-                );
-
-
-        columnaAnimal.setCellValueFactory(
-                celda -> {
-
-                    int idAnimal =
-                            celda.getValue()
-                                    .getIdAnimal();
-
-
-                    return new SimpleStringProperty(
-                            obtenerNombreAnimal(
-                                    idAnimal
-                            )
-                    );
-                }
-        );
-
-
-        // -----------------------------------------------------
-        // FECHA
-        // -----------------------------------------------------
-
-        TableColumn<Movimiento, String>
-                columnaFecha =
-                new TableColumn<>(
-                        "Fecha"
-                );
-
-
-        columnaFecha.setCellValueFactory(
-                new PropertyValueFactory<>(
-                        "fechaMovimiento"
-                )
-        );
-
-
-        // -----------------------------------------------------
-        // TIPO
-        // -----------------------------------------------------
-
-        TableColumn<Movimiento, String>
-                columnaTipo =
-                new TableColumn<>(
-                        "Tipo"
-                );
-
-
-        columnaTipo.setCellValueFactory(
-                new PropertyValueFactory<>(
-                        "tipoMovimiento"
-                )
-        );
-
-
-        // -----------------------------------------------------
-        // CANTIDAD
-        // -----------------------------------------------------
-
-        TableColumn<Movimiento, Integer>
-                columnaCantidad =
-                new TableColumn<>(
-                        "Cantidad"
-                );
-
-
-        columnaCantidad.setCellValueFactory(
-                new PropertyValueFactory<>(
-                        "cantidad"
-                )
-        );
-
-
-        // -----------------------------------------------------
-        // DESTINO
-        // -----------------------------------------------------
-
-        TableColumn<Movimiento, String>
-                columnaDestino =
-                new TableColumn<>(
-                        "Destino"
-                );
-
-
-        columnaDestino.setCellValueFactory(
-                new PropertyValueFactory<>(
-                        "destino"
-                )
-        );
-
-
-        // -----------------------------------------------------
-        // AGREGAR COLUMNAS
-        // -----------------------------------------------------
-
-        tabla.getColumns().addAll(
-                columnaAnimal,
-                columnaFecha,
-                columnaTipo,
-                columnaCantidad,
-                columnaDestino
-        );
-
-
-        tabla.setPrefHeight(
-                250
-        );
-
-
-        tabla.setMinHeight(
-                200
-        );
+        return scroll;
     }
 
 
@@ -1204,12 +999,10 @@ public class VentanaMovimientos {
 
     private void cargarAnimales() {
 
-        ObservableList<Animal>
-                animales =
+        ObservableList<Animal> animales =
                 FXCollections.observableArrayList(
                         animalDAO.listar()
                 );
-
 
         comboAnimal.setItems(
                 animales
@@ -1218,7 +1011,24 @@ public class VentanaMovimientos {
 
 
     // =========================================================
-    // CARGAR INGRESOS POR ANIMAL
+    // CARGAR HABITÁCULOS
+    // =========================================================
+
+    private void cargarHabitaculos() {
+
+        ObservableList<Habitaculo> habitaculos =
+                FXCollections.observableArrayList(
+                        habitaculoDAO.listar()
+                );
+
+        comboHabitaculo.setItems(
+                habitaculos
+        );
+    }
+
+
+    // =========================================================
+    // CARGAR ACTAS SEGÚN ANIMAL
     // =========================================================
 
     private void cargarIngresosPorAnimal() {
@@ -1227,30 +1037,20 @@ public class VentanaMovimientos {
                 comboAnimal.getValue();
 
 
-        comboIngreso
-                .getItems()
-                .clear();
+        comboIngreso.getItems().clear();
 
 
-        comboIngreso.setValue(
-                null
+        lblDisponible.setText(
+                "Disponible en cuarentena: -"
         );
 
 
-        if (
-                animalSeleccionado == null
-        ) {
-
-            comboIngreso.setPromptText(
-                    "Seleccione un animal primero"
-            );
-
+        if (animalSeleccionado == null) {
             return;
         }
 
 
-        ObservableList<Ingreso>
-                ingresos =
+        ObservableList<Ingreso> ingresos =
                 FXCollections.observableArrayList(
                         ingresoDAO.listarPorAnimal(
                                 animalSeleccionado
@@ -1265,10 +1065,245 @@ public class VentanaMovimientos {
 
 
         comboIngreso.setPromptText(
-                ingresos.isEmpty()
-                        ? "Sin actas asociadas"
-                        : "Seleccione el N° de acta"
+                "Seleccione el N° de acta"
         );
+    }
+
+
+    // =========================================================
+    // ACTUALIZAR DISPONIBILIDAD
+    // =========================================================
+
+    private void actualizarCantidadDisponible() {
+
+        Animal animal =
+                comboAnimal.getValue();
+
+        Ingreso ingreso =
+                comboIngreso.getValue();
+
+
+        if (animal == null
+                || ingreso == null) {
+
+            lblDisponible.setText(
+                    "Disponible en cuarentena: -"
+            );
+
+            return;
+        }
+
+
+        DetalleIngreso detalle =
+                detalleIngresoDAO
+                        .buscarPorAnimalEIngreso(
+                                animal.getIdAnimal(),
+                                ingreso.getIdIngreso()
+                        );
+
+
+        if (detalle == null) {
+
+            lblDisponible.setText(
+                    "Disponible en cuarentena: 0"
+            );
+
+            return;
+        }
+
+
+        int disponible =
+                calcularDisponible(
+                        detalle
+                );
+
+
+        lblDisponible.setText(
+                "Disponible en cuarentena: "
+                        + disponible
+        );
+    }
+
+
+    // =========================================================
+    // CALCULAR DISPONIBLE
+    // =========================================================
+
+    private int calcularDisponible(
+            DetalleIngreso detalle) {
+
+        int cantidadInicial =
+                detalle.getCantidad();
+
+
+        int utilizada = 0;
+
+
+        for (Movimiento movimiento :
+                movimientoDAO.listar()) {
+
+            if (movimiento.getIdDetalle()
+                    == detalle.getIdDetalle()) {
+
+                utilizada +=
+                        movimiento.getCantidad();
+            }
+        }
+
+
+        int disponible =
+                cantidadInicial - utilizada;
+
+
+        if (disponible < 0) {
+            disponible = 0;
+        }
+
+
+        return disponible;
+    }
+
+
+    // =========================================================
+    // MOSTRAR / OCULTAR CAMPOS DEL PLANTEL
+    // =========================================================
+
+    private void actualizarCamposPlantel() {
+
+        boolean esPlantel =
+                "PLANTEL PERMANENTE".equals(
+                        comboTipo.getValue()
+                );
+
+
+        // ---------------------------------------------
+        // UBICACIÓN
+        // ---------------------------------------------
+
+        comboUbicacion.setVisible(
+                esPlantel
+        );
+
+        comboUbicacion.setManaged(
+                esPlantel
+        );
+
+
+        // Buscar la etiqueta dentro del formulario
+        // se controla mediante el estado del ComboBox.
+        //
+        // La etiqueta se mantiene visible únicamente
+        // cuando corresponde.
+
+
+        // ---------------------------------------------
+        // HABITÁCULO
+        // ---------------------------------------------
+
+        boolean mostrarHabitaculo =
+                esPlantel
+                        && (
+                        "Habitáculo".equals(
+                                comboUbicacion.getValue()
+                        )
+                        ||
+                        "Recinto".equals(
+                                comboUbicacion.getValue()
+                        )
+                );
+
+
+        comboHabitaculo.setVisible(
+                mostrarHabitaculo
+        );
+
+        comboHabitaculo.setManaged(
+                mostrarHabitaculo
+        );
+
+
+        if (!esPlantel) {
+
+            comboUbicacion.setValue(
+                    null
+            );
+
+            comboHabitaculo.setValue(
+                    null
+            );
+        }
+    }
+
+
+    // =========================================================
+    // ACTUALIZAR HABITÁCULO
+    // =========================================================
+
+    private void actualizarHabitaculo() {
+
+        boolean mostrar =
+                "PLANTEL PERMANENTE".equals(
+                        comboTipo.getValue()
+                )
+                &&
+                (
+                        "Habitáculo".equals(
+                                comboUbicacion.getValue()
+                        )
+                        ||
+                        "Recinto".equals(
+                                comboUbicacion.getValue()
+                        )
+                );
+
+
+        comboHabitaculo.setVisible(
+                mostrar
+        );
+
+        comboHabitaculo.setManaged(
+                mostrar
+        );
+
+
+        if (!mostrar) {
+
+            comboHabitaculo.setValue(
+                    null
+            );
+        }
+    }
+
+
+    // =========================================================
+    // ESTILOS Y VALIDACIÓN
+    // =========================================================
+
+    private Label crearLabelCampo(String texto) {
+        return crearLabelCampo(texto, false);
+    }
+
+    private Label crearLabelCampo(String texto, boolean obligatorio) {
+        Label label = new Label(obligatorio ? texto + " *" : texto);
+        label.setStyle(
+                "-fx-font-size: 13px;" +
+                "-fx-font-weight: bold;" +
+                (obligatorio
+                        ? "-fx-text-fill: #B43C3C;"
+                        : "-fx-text-fill: #445149;")
+        );
+        return label;
+    }
+
+    private void marcarCampoError(javafx.scene.Node campo, boolean error) {
+        campo.setStyle(error
+                ? "-fx-border-color: #C94A4A;" +
+                  "-fx-border-width: 2;" +
+                  "-fx-border-radius: 8;" +
+                  "-fx-background-radius: 8;"
+                : "-fx-border-color: #C9D2CB;" +
+                  "-fx-border-radius: 8;" +
+                  "-fx-background-radius: 8;");
     }
 
 
@@ -1280,14 +1315,12 @@ public class VentanaMovimientos {
 
         try {
 
-            // -------------------------------------------------
+            // =================================================
             // VALIDACIONES
-            // -------------------------------------------------
+            // =================================================
 
-            if (
-                    comboAnimal.getValue()
-                            == null
-            ) {
+            if (comboAnimal.getValue() == null) {
+                marcarCampoError(comboAnimal, true);
 
                 mostrarMensaje(
                         "Seleccione un animal."
@@ -1297,23 +1330,19 @@ public class VentanaMovimientos {
             }
 
 
-            if (
-                    comboIngreso.getValue()
-                            == null
-            ) {
+            if (comboIngreso.getValue() == null) {
+                marcarCampoError(comboIngreso, true);
 
                 mostrarMensaje(
-                        "Seleccione el N° de acta."
+                        "Seleccione el número de acta."
                 );
 
                 return;
             }
 
 
-            if (
-                    txtFecha.getText()
-                            .isBlank()
-            ) {
+            if (datePickerFecha.getValue() == null) {
+                marcarCampoError(datePickerFecha, true);
 
                 mostrarMensaje(
                         "Ingrese la fecha del movimiento."
@@ -1323,10 +1352,8 @@ public class VentanaMovimientos {
             }
 
 
-            if (
-                    comboTipo.getValue()
-                            == null
-            ) {
+            if (comboTipo.getValue() == null) {
+                marcarCampoError(comboTipo, true);
 
                 mostrarMensaje(
                         "Seleccione el tipo de movimiento."
@@ -1336,10 +1363,8 @@ public class VentanaMovimientos {
             }
 
 
-            if (
-                    txtCantidad.getText()
-                            .isBlank()
-            ) {
+            if (txtCantidad.getText().isBlank()) {
+                marcarCampoError(txtCantidad, true);
 
                 mostrarMensaje(
                         "Ingrese la cantidad."
@@ -1349,9 +1374,38 @@ public class VentanaMovimientos {
             }
 
 
-            // -------------------------------------------------
+            // =================================================
+            // OBTENER DATOS
+            // =================================================
+
+            Animal animal =
+                    comboAnimal.getValue();
+
+            Ingreso ingreso =
+                    comboIngreso.getValue();
+
+
+            DetalleIngreso detalle =
+                    detalleIngresoDAO
+                            .buscarPorAnimalEIngreso(
+                                    animal.getIdAnimal(),
+                                    ingreso.getIdIngreso()
+                            );
+
+
+            if (detalle == null) {
+
+                mostrarMensaje(
+                        "No se encontró el detalle correspondiente al animal y al acta seleccionados."
+                );
+
+                return;
+            }
+
+
+            // =================================================
             // CANTIDAD
-            // -------------------------------------------------
+            // =================================================
 
             int cantidad =
                     Integer.parseInt(
@@ -1361,70 +1415,124 @@ public class VentanaMovimientos {
                     );
 
 
-            if (
-                    cantidad <= 0
-            ) {
+            if (cantidad <= 0) {
 
                 mostrarMensaje(
-                        "La cantidad debe ser mayor que 0."
+                        "La cantidad debe ser mayor que cero."
                 );
 
                 return;
             }
 
 
-            // -------------------------------------------------
-            // DESTINO OBLIGATORIO PARA TRASLADO
-            // -------------------------------------------------
+            // =================================================
+            // DISPONIBILIDAD
+            // =================================================
 
-            if (
+            int disponible =
+                    calcularDisponible(
+                            detalle
+                    );
+
+
+            if (cantidad > disponible) {
+
+                mostrarMensaje(
+                        "La cantidad ingresada supera la cantidad disponible en cuarentena."
+                                + "\n\n"
+                                + "Disponible: "
+                                + disponible
+                );
+
+                return;
+            }
+
+
+            // =================================================
+            // TRASLADO
+            // =================================================
+
+            if ("TRASLADO".equals(
                     comboTipo.getValue()
-                            .equals("TRASLADO")
-                            &&
-                    txtDestino.getText()
-                            .isBlank()
-            ) {
+            )) {
 
-                mostrarMensaje(
-                        "Ingrese el destino del traslado."
-                );
+                if (txtDestino.getText()
+                        .isBlank()) {
 
-                return;
+                    mostrarMensaje(
+                            "Ingrese el destino del traslado."
+                    );
+
+                    return;
+                }
             }
 
 
-            // -------------------------------------------------
+            // =================================================
+            // PLANTEL PERMANENTE
+            // =================================================
+
+            if ("PLANTEL PERMANENTE".equals(
+                    comboTipo.getValue()
+            )) {
+
+                if (comboUbicacion.getValue()
+                        == null) {
+
+                    mostrarMensaje(
+                            "Seleccione el tipo de ubicación del Plantel Permanente."
+                    );
+
+                    return;
+                }
+
+
+                boolean necesitaHabitaculo =
+                        "Habitáculo".equals(
+                                comboUbicacion
+                                        .getValue()
+                        )
+                        ||
+                        "Recinto".equals(
+                                comboUbicacion
+                                        .getValue()
+                        );
+
+
+                if (necesitaHabitaculo
+                        && comboHabitaculo
+                        .getValue() == null) {
+
+                    mostrarMensaje(
+                            "Seleccione el habitáculo correspondiente."
+                    );
+
+                    return;
+                }
+            }
+
+
+            // =================================================
             // CREAR MOVIMIENTO
-            // -------------------------------------------------
+            // =================================================
 
             Movimiento movimiento =
                     new Movimiento();
 
 
-            movimiento.setIdAnimal(
-                    comboAnimal
-                            .getValue()
-                            .getIdAnimal()
-            );
-
-
-            movimiento.setIdIngreso(
-                    comboIngreso
-                            .getValue()
-                            .getIdIngreso()
+            movimiento.setIdDetalle(
+                    detalle.getIdDetalle()
             );
 
 
             movimiento.setFechaMovimiento(
-                    txtFecha
-                            .getText()
-                            .trim()
+                    DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                            .format(datePickerFecha.getValue())
             );
 
 
             movimiento.setTipoMovimiento(
-                    comboTipo
-                            .getValue()
+                    comboTipo.getValue()
             );
 
 
@@ -1447,14 +1555,134 @@ public class VentanaMovimientos {
             );
 
 
-            // -------------------------------------------------
-            // GUARDAR
-            // -------------------------------------------------
+            // =================================================
+            // CONFIRMACIÓN
+            // =================================================
+
+            Alert confirmacion =
+                    new Alert(
+                            Alert.AlertType.CONFIRMATION
+                    );
+
+
+            confirmacion.setTitle(
+                    "Confirmar movimiento"
+            );
+
+
+            confirmacion.setHeaderText(
+                    "¿Desea registrar este movimiento?"
+            );
+
+
+            confirmacion.setContentText(
+                    "Animal: "
+                            + animal.getNombreVulgar()
+                            + "\nTipo: "
+                            + movimiento
+                            .getTipoMovimiento()
+                            + "\nCantidad: "
+                            + cantidad
+            );
+
+
+            var resultado =
+                    confirmacion.showAndWait();
+
+
+            if (resultado.isEmpty()) {
+                return;
+            }
+
+
+            if (resultado.get()
+                    != javafx.scene.control.ButtonType.OK) {
+
+                return;
+            }
+
+
+            // =================================================
+            // GUARDAR MOVIMIENTO
+            // =================================================
 
             movimientoDAO.agregar(
                     movimiento
             );
 
+
+            // =================================================
+            // SI ES PLANTEL PERMANENTE,
+            // CREAR REGISTRO EN PLANTEL
+            // =================================================
+
+            if ("PLANTEL PERMANENTE".equals(
+                    movimiento.getTipoMovimiento()
+            )) {
+
+                PlantelPermanente plantel =
+                        new PlantelPermanente();
+
+
+                plantel.setIdAnimal(
+                        detalle.getIdAnimal()
+                );
+
+
+                plantel.setCantidad(
+                        cantidad
+                );
+
+
+                plantel.setTipoUbicacion(
+                        comboUbicacion.getValue()
+                );
+
+
+                if (comboHabitaculo
+                        .getValue() != null) {
+
+                    plantel.setIdHabitaculo(
+                            comboHabitaculo
+                                    .getValue()
+                                    .getIdHabitaculo()
+                    );
+
+                } else {
+
+                    plantel.setIdHabitaculo(
+                            null
+                    );
+                }
+
+
+                plantel.setFechaIngresoPlantel(
+                        DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                                .format(datePickerFecha.getValue())
+                );
+
+
+                plantel.setEstado(
+                        "Activo"
+                );
+
+
+                plantel.setObservaciones(
+                        txtObservaciones
+                                .getText()
+                                .trim()
+                );
+
+
+                plantelDAO.agregar(
+                        plantel
+                );
+            }
+
+
+            // =================================================
+            // ACTUALIZAR
+            // =================================================
 
             mostrarInformacion(
                     "Movimiento registrado correctamente."
@@ -1463,18 +1691,63 @@ public class VentanaMovimientos {
 
             limpiarCampos();
 
-
             cargarMovimientos();
+        }
 
 
-        } catch (
-                NumberFormatException e
-        ) {
+        catch (NumberFormatException e) {
 
             mostrarMensaje(
                     "La cantidad debe ser un número entero."
             );
         }
+
+
+        catch (Exception e) {
+
+            mostrarMensaje(
+                    "Ocurrió un error al registrar el movimiento."
+                            + "\n\n"
+                            + e.getMessage()
+            );
+        }
+    }
+
+
+    // =========================================================
+    // OBTENER ANIMAL DESDE EL DETALLE DEL MOVIMIENTO
+    // =========================================================
+
+    private int obtenerIdAnimalPorDetalle(int idDetalle) {
+
+        String sql = """
+                SELECT id_animal
+                FROM detalle_ingreso
+                WHERE id_detalle = ?
+                """;
+
+        try (Connection conexion = ConexionSQLite.conectar();
+             PreparedStatement sentencia =
+                     conexion.prepareStatement(sql)) {
+
+            sentencia.setInt(1, idDetalle);
+
+            try (ResultSet resultado =
+                         sentencia.executeQuery()) {
+
+                if (resultado.next()) {
+                    return resultado.getInt("id_animal");
+                }
+            }
+
+        } catch (Exception e) {
+            System.out.println(
+                    "Error al obtener el animal del movimiento."
+            );
+            System.out.println(e.getMessage());
+        }
+
+        return 0;
     }
 
 
@@ -1484,44 +1757,20 @@ public class VentanaMovimientos {
 
     private void cargarMovimientos() {
 
-        ObservableList<Movimiento>
-                movimientos =
+        ObservableList<Movimiento> movimientos =
                 FXCollections.observableArrayList(
                         movimientoDAO.listar()
                 );
 
+        movimientosFiltrados =
+                new FilteredList<>(
+                        movimientos,
+                        movimiento -> true
+                );
 
         tabla.setItems(
-                movimientos
+                movimientosFiltrados
         );
-    }
-
-
-    // =========================================================
-    // OBTENER NOMBRE DEL ANIMAL
-    // =========================================================
-
-    private String obtenerNombreAnimal(
-            int idAnimal
-    ) {
-
-        for (
-                Animal animal :
-                animalDAO.listar()
-        ) {
-
-            if (
-                    animal.getIdAnimal()
-                            ==
-                    idAnimal
-            ) {
-
-                return animal.getNombreVulgar();
-            }
-        }
-
-
-        return "Animal no encontrado";
     }
 
 
@@ -1536,9 +1785,7 @@ public class VentanaMovimientos {
         );
 
 
-        comboIngreso
-                .getItems()
-                .clear();
+        comboIngreso.getItems().clear();
 
 
         comboIngreso.setValue(
@@ -1550,8 +1797,35 @@ public class VentanaMovimientos {
                 "Seleccione un animal primero"
         );
 
+        comboIngreso.setCellFactory(lista -> new javafx.scene.control.ListCell<Ingreso>() {
+            @Override
+            protected void updateItem(Ingreso ingreso, boolean vacio) {
+                super.updateItem(ingreso, vacio);
+                setText(vacio || ingreso == null
+                        ? null
+                        : "Acta " + ingreso.getNumeroActa()
+                          + " — " + ingreso.getFechaIngreso());
+            }
+        });
 
-        txtFecha.clear();
+        comboIngreso.setButtonCell(new javafx.scene.control.ListCell<Ingreso>() {
+            @Override
+            protected void updateItem(Ingreso ingreso, boolean vacio) {
+                super.updateItem(ingreso, vacio);
+                setText(vacio || ingreso == null
+                        ? null
+                        : "Acta " + ingreso.getNumeroActa()
+                          + " — " + ingreso.getFechaIngreso());
+            }
+        });
+
+
+        lblDisponible.setText(
+                "Disponible en cuarentena: -"
+        );
+
+
+        datePickerFecha.setValue(null);
 
 
         comboTipo.setValue(
@@ -1565,59 +1839,20 @@ public class VentanaMovimientos {
         txtDestino.clear();
 
 
+        comboUbicacion.setValue(
+                null
+        );
+
+
+        comboHabitaculo.setValue(
+                null
+        );
+
+
         txtObservaciones.clear();
-    }
 
 
-    // =========================================================
-    // LABEL OBLIGATORIO
-    // =========================================================
-
-    private Label crearLabelObligatorio(
-            String texto
-    ) {
-
-        Label label =
-                new Label(
-                        texto + " *"
-                );
-
-
-        label.setStyle(
-                "-fx-font-size: 13px;" +
-                "-fx-font-weight: bold;" +
-                "-fx-text-fill: " +
-                        ROJO +
-                        ";"
-        );
-
-
-        return label;
-    }
-
-
-    // =========================================================
-    // LABEL NORMAL
-    // =========================================================
-
-    private Label crearLabelCampo(
-            String texto
-    ) {
-
-        Label label =
-                new Label(
-                        texto
-                );
-
-
-        label.setStyle(
-                "-fx-font-size: 13px;" +
-                "-fx-font-weight: bold;" +
-                "-fx-text-fill: #34463A;"
-        );
-
-
-        return label;
+        actualizarCamposPlantel();
     }
 
 
@@ -1626,8 +1861,7 @@ public class VentanaMovimientos {
     // =========================================================
 
     private void mostrarMensaje(
-            String mensaje
-    ) {
+            String mensaje) {
 
         Alert alerta =
                 new Alert(
@@ -1655,12 +1889,11 @@ public class VentanaMovimientos {
 
 
     // =========================================================
-    // MENSAJE DE INFORMACIÓN
+    // MENSAJE INFORMACIÓN
     // =========================================================
 
     private void mostrarInformacion(
-            String mensaje
-    ) {
+            String mensaje) {
 
         Alert alerta =
                 new Alert(
@@ -1684,5 +1917,34 @@ public class VentanaMovimientos {
 
 
         alerta.showAndWait();
+    }
+
+
+    // =========================================================
+    // MOSTRAR VENTANA
+    // =========================================================
+
+    public void mostrar(
+            javafx.stage.Stage escenario) {
+
+        javafx.scene.Scene escena =
+                new javafx.scene.Scene(
+                        crearContenido(),
+                        1000,
+                        750
+                );
+
+
+        escenario.setTitle(
+                "Tatú Carreta - Movimientos"
+        );
+
+
+        escenario.setScene(
+                escena
+        );
+
+
+        escenario.show();
     }
 }
