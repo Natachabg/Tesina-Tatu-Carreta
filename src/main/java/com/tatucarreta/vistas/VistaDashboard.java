@@ -7,7 +7,6 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
-import javafx.scene.control.ScrollPane;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
@@ -26,6 +25,8 @@ public class VistaDashboard extends BorderPane {
         VBox main = new VBox(18);
         main.setFillWidth(true);
         main.setPadding(new Insets(2));
+        main.setMinSize(0, 0);
+        main.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
 
         ImageView title = new ImageView();
         try {
@@ -186,19 +187,75 @@ public class VistaDashboard extends BorderPane {
         HBox info = new HBox(16, capacidadBox, circuito);
         info.setAlignment(Pos.TOP_LEFT);
         info.setFillHeight(true);
+        info.setMinHeight(0);
+        VBox.setVgrow(info, Priority.ALWAYS);
 
         main.getChildren().addAll(title, banner, cards, info);
+        setCenter(main);
 
-        ScrollPane scroll = new ScrollPane(main);
-        scroll.setFitToWidth(true);
-        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        scroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        scroll.setPannable(true);
-        scroll.setStyle(
-                "-fx-background-color: transparent;"
-                        + "-fx-background: transparent;"
-                        + "-fx-border-color: transparent;");
-        setCenter(scroll);
+        Runnable ajustarContenido = () -> {
+            double ancho = Math.max(320, getWidth() - 48);
+            double alto = getHeight();
+            boolean compacto = alto > 0 && alto < 790;
+
+            title.setFitWidth(Math.min(1080, ancho));
+            title.setFitHeight(compacto ? 112 : 155);
+
+            main.setSpacing(compacto ? 10 : 18);
+            main.setPadding(new Insets(compacto ? 0 : 2));
+            banner.setSpacing(compacto ? 10 : 18);
+            banner.setPadding(compacto ? new Insets(10, 14, 10, 14) : new Insets(20, 22, 20, 22));
+            cards.setSpacing(compacto ? 8 : 14);
+            cards.setMinHeight(compacto ? 0 : Region.USE_PREF_SIZE);
+            info.setSpacing(compacto ? 10 : 16);
+
+            for (var card : cards.getChildren()) {
+                if (card instanceof VBox box) {
+                    box.setPadding(compacto ? new Insets(8) : new Insets(14));
+                    box.setSpacing(compacto ? 5 : 8);
+                    box.setPrefHeight(compacto ? 106 : 122);
+                    box.setMinHeight(compacto ? 96 : Region.USE_PREF_SIZE);
+                    for (var child : box.getChildren()) {
+                        if (child instanceof HBox top) {
+                            top.setSpacing(compacto ? 6 : 10);
+                            if (!top.getChildren().isEmpty() && top.getChildren().get(0) instanceof Label icon) {
+                                double iconSize = compacto ? 34 : 42;
+                                icon.setMinSize(iconSize, iconSize);
+                                icon.setMaxSize(iconSize, iconSize);
+                            }
+                            if (top.getChildren().size() > 1 && top.getChildren().get(1) instanceof VBox labels) {
+                                for (var labelNode : labels.getChildren()) {
+                                    if (labelNode instanceof Label label && label.getText() != null
+                                            && label.getText().matches("\\d+")) {
+                                        label.setStyle("-fx-font-size:" + (compacto ? 22 : 27)
+                                                + "px;-fx-font-weight:bold;-fx-text-fill:" + Estilos.VERDE_OSCURO + ";");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            capacidadBox.setPadding(compacto ? new Insets(11) : new Insets(20));
+            capacidadBox.setSpacing(compacto ? 6 : 12);
+            circuito.setPadding(compacto ? new Insets(11) : new Insets(20));
+            circuito.setSpacing(compacto ? 6 : 12);
+            for (int i = 1; i < circuito.getChildren().size(); i++) {
+                if (circuito.getChildren().get(i) instanceof Label paso) {
+                    String estilo = paso.getStyle();
+                    paso.setStyle(compacto
+                            ? estilo.replace("-fx-padding: 11 13;", "-fx-padding: 7 9;")
+                                    .replace("-fx-font-size: 12px;", "-fx-font-size: 11px;")
+                            : estilo.replace("-fx-padding: 7 9;", "-fx-padding: 11 13;")
+                                    .replace("-fx-font-size: 11px;", "-fx-font-size: 12px;"));
+                }
+            }
+        };
+
+        heightProperty().addListener((obs, anterior, nuevo) -> ajustarContenido.run());
+        widthProperty().addListener((obs, anterior, nuevo) -> ajustarContenido.run());
+        ajustarContenido.run();
     }
 
     private Label paso(String numero, String titulo, String descripcion) {
