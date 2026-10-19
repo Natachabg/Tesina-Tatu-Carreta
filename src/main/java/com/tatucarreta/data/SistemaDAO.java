@@ -105,9 +105,9 @@ public class SistemaDAO {
          *
          * - Si el movimiento salió del Plantel, devuelve la cantidad al Plantel.
          * - Si el movimiento ingresó al Plantel desde un Acta, descuenta la
-         *   cantidad que ese movimiento había agregado.
+         * cantidad que ese movimiento había agregado.
          * - El movimiento queda en estado Inactivo y conserva su registro,
-         *   agregando una marca de REVERTIDO en sus observaciones.
+         * agregando una marca de REVERTIDO en sus observaciones.
          * - Se reconstruyen las observaciones de los habitáculos afectados.
          */
         public static void revertirMovimiento(int idMovimiento) {
@@ -133,15 +133,15 @@ public class SistemaDAO {
 
                         try (PreparedStatement ps = cn.prepareStatement(
                                         "SELECT COALESCE(m.id_detalle,0), " +
-                                        "COALESCE(m.id_plantel,0), " +
-                                        "COALESCE(m.cantidad,0), " +
-                                        "COALESCE(p.id_animal,0), " +
-                                        "COALESCE(m.tipo_movimiento,''), " +
-                                        "COALESCE(m.fecha_movimiento,''), " +
-                                        "CASE WHEN m.estado='Activo' THEN 1 ELSE 0 END " +
-                                        "FROM movimientos m " +
-                                        "LEFT JOIN plantel_permanente p ON p.id_plantel=m.id_plantel " +
-                                        "WHERE m.id_movimiento=?")) {
+                                                        "COALESCE(m.id_plantel,0), " +
+                                                        "COALESCE(m.cantidad,0), " +
+                                                        "COALESCE(p.id_animal,0), " +
+                                                        "COALESCE(m.tipo_movimiento,''), " +
+                                                        "COALESCE(m.fecha_movimiento,''), " +
+                                                        "CASE WHEN m.estado='Activo' THEN 1 ELSE 0 END " +
+                                                        "FROM movimientos m " +
+                                                        "LEFT JOIN plantel_permanente p ON p.id_plantel=m.id_plantel " +
+                                                        "WHERE m.id_movimiento=?")) {
 
                                 ps.setInt(1, idMovimiento);
 
@@ -176,7 +176,7 @@ public class SistemaDAO {
                         if (idPlantel > 0) {
                                 try (PreparedStatement ps = cn.prepareStatement(
                                                 "SELECT COALESCE(id_habitaculo,0) " +
-                                                "FROM plantel_permanente WHERE id_plantel=?")) {
+                                                                "FROM plantel_permanente WHERE id_plantel=?")) {
                                         ps.setInt(1, idPlantel);
                                         try (ResultSet rs = ps.executeQuery()) {
                                                 if (rs.next()) {
@@ -212,9 +212,10 @@ public class SistemaDAO {
                                         updateConConexion(
                                                         cn,
                                                         "UPDATE plantel_permanente SET " +
-                                                        "cantidad=MAX(cantidad-?,0), " +
-                                                        "estado=CASE WHEN cantidad-?<=0 THEN 'Inactivo' ELSE 'Activo' END " +
-                                                        "WHERE id_plantel=?",
+                                                                        "cantidad=MAX(cantidad-?,0), " +
+                                                                        "estado=CASE WHEN cantidad-?<=0 THEN 'Inactivo' ELSE 'Activo' END "
+                                                                        +
+                                                                        "WHERE id_plantel=?",
                                                         cantidad,
                                                         cantidad,
                                                         idPlantel);
@@ -224,15 +225,14 @@ public class SistemaDAO {
                                         updateConConexion(
                                                         cn,
                                                         "UPDATE plantel_permanente SET " +
-                                                        "cantidad=cantidad+?, estado='Activo' " +
-                                                        "WHERE id_plantel=?",
+                                                                        "cantidad=cantidad+?, estado='Activo' " +
+                                                                        "WHERE id_plantel=?",
                                                         cantidad,
                                                         idPlantel);
                                 }
                         }
 
-                        String marcaReversion =
-                                        formatearFechaMovimiento(fecha) +
+                        String marcaReversion = formatearFechaMovimiento(fecha) +
                                         " - REVERTIDO - Movimiento #" +
                                         idMovimiento;
 
@@ -340,7 +340,51 @@ public class SistemaDAO {
         }
 
         public static void activar(String tabla, String pk, int id) {
-                update("UPDATE " + tabla + " SET estado='Activo' WHERE " + pk + "=?", id);
+
+                // Tratamiento especial para los habitáculos.
+                if ("habitaculos".equalsIgnoreCase(tabla)) {
+
+                        String observaciones = scalar(
+                                        "SELECT COALESCE(observaciones,'') FROM "
+                                                        + tabla
+                                                        + " WHERE "
+                                                        + pk
+                                                        + "="
+                                                        + id);
+
+                        if (observaciones != null && !"0".equals(observaciones)) {
+
+                                StringBuilder observacionesFinales = new StringBuilder();
+
+                                for (String linea : observaciones.split("\\R")) {
+
+                                        if (linea.trim().startsWith(
+                                                        "Motivo de inactivación (")) {
+                                                continue;
+                                        }
+
+                                        if (observacionesFinales.length() > 0) {
+                                                observacionesFinales.append("\n");
+                                        }
+
+                                        observacionesFinales.append(linea);
+                                }
+
+                                update(
+                                                "UPDATE " + tabla
+                                                                + " SET estado='Activo', observaciones=? WHERE "
+                                                                + pk + "=?",
+                                                observacionesFinales.toString().trim(),
+                                                id);
+
+                                return;
+                        }
+                }
+
+                // Comportamiento original para las demás entidades.
+                update(
+                                "UPDATE " + tabla + " SET estado='Activo' WHERE " + pk + "=?",
+                                id);
         }
 
         // ESPECIES
@@ -400,6 +444,7 @@ public class SistemaDAO {
                 update("UPDATE especies SET nombre=?, estado=? WHERE id_especie=?", nombre.trim(), estadoFinal, id);
                 return id;
         }
+
         public static boolean especiePuedeEliminar(int id) {
 
                 return Integer.parseInt(
@@ -545,16 +590,17 @@ public class SistemaDAO {
                 }
                 if (existe(
                                 "SELECT 1 FROM animales WHERE estado='Activo' AND id_especie=? " +
-                                "AND LOWER(TRIM(nombre_vulgar))=LOWER(TRIM(?)) " +
-                                "AND LOWER(TRIM(nombre_cientifico))=LOWER(TRIM(?)) AND id_animal<>?",
+                                                "AND LOWER(TRIM(nombre_vulgar))=LOWER(TRIM(?)) " +
+                                                "AND LOWER(TRIM(nombre_cientifico))=LOWER(TRIM(?)) AND id_animal<>?",
                                 esp, vul.trim(), cient.trim(), id)) {
                         throw new IllegalArgumentException(
                                         "Ya existe ese animal en el catálogo para la especie seleccionada.");
                 }
                 if (id == 0) {
                         return update(
-                                        "INSERT INTO animales(id_especie,nombre_vulgar,nombre_cientifico,cantidad_actual,origen,estado) " +
-                                        "VALUES(?,?,?,0,?,'Activo')",
+                                        "INSERT INTO animales(id_especie,nombre_vulgar,nombre_cientifico,cantidad_actual,origen,estado) "
+                                                        +
+                                                        "VALUES(?,?,?,0,?,'Activo')",
                                         esp, vul.trim(), cient.trim(), origen);
                 }
                 update(
@@ -562,6 +608,7 @@ public class SistemaDAO {
                                 esp, vul.trim(), cient.trim(), origen, id);
                 return id;
         }
+
         public static boolean animalPuedeEliminar(int id) {
                 return Integer.parseInt(scalar("SELECT COUNT(*) FROM detalle_ingreso WHERE id_animal=" + id))
                                 + Integer.parseInt(scalar(
@@ -587,13 +634,17 @@ public class SistemaDAO {
         private static void sincronizarObservacionesHabitaculos() {
                 try (Connection cn = c()) {
                         List<Integer> ids = new ArrayList<>();
-                        try (PreparedStatement ps = cn.prepareStatement("SELECT id_habitaculo FROM habitaculos WHERE estado='Activo'");
-                             ResultSet rs = ps.executeQuery()) {
-                                while (rs.next()) ids.add(rs.getInt(1));
+                        try (PreparedStatement ps = cn.prepareStatement(
+                                        "SELECT id_habitaculo FROM habitaculos WHERE estado='Activo'");
+                                        ResultSet rs = ps.executeQuery()) {
+                                while (rs.next())
+                                        ids.add(rs.getInt(1));
                         }
-                        for (int id : ids) actualizarObservacionHabitaculoConConexion(cn, id);
+                        for (int id : ids)
+                                actualizarObservacionHabitaculoConConexion(cn, id);
                 } catch (SQLException e) {
-                        throw new RuntimeException("No se pudieron actualizar las observaciones de los habitáculos.", e);
+                        throw new RuntimeException("No se pudieron actualizar las observaciones de los habitáculos.",
+                                        e);
                 }
         }
 
@@ -743,7 +794,7 @@ public class SistemaDAO {
                         int ocupacion = Integer.parseInt(scalarConConexion(
                                         cn,
                                         "SELECT COUNT(*) FROM plantel_permanente " +
-                                        "WHERE id_habitaculo=? AND estado='Activo' AND cantidad>0",
+                                                        "WHERE id_habitaculo=? AND estado='Activo' AND cantidad>0",
                                         id));
                         if (ocupacion > 0) {
                                 throw new IllegalArgumentException(
@@ -753,7 +804,7 @@ public class SistemaDAO {
                         String observaciones = scalarConConexion(
                                         cn,
                                         "SELECT COALESCE(observaciones,'') FROM habitaculos " +
-                                        "WHERE id_habitaculo=? AND estado='Activo'",
+                                                        "WHERE id_habitaculo=? AND estado='Activo'",
                                         id);
                         if (observaciones == null || "0".equals(observaciones)) {
                                 throw new IllegalArgumentException("El habitáculo no existe o ya está inactivo.");
@@ -762,27 +813,37 @@ public class SistemaDAO {
                         String nota = "Motivo de inactivación (" + LocalDate.now() + "): " + motivoFinal;
                         String nuevasObservaciones = observaciones.isBlank()
                                         || "Disponible.".equalsIgnoreCase(observaciones.trim())
-                                        ? nota
-                                        : observaciones.trim() + "\n" + nota;
+                                                        ? nota
+                                                        : observaciones.trim() + "\n" + nota;
                         updateConConexion(
                                         cn,
                                         "UPDATE habitaculos SET observaciones=?, estado='Inactivo' " +
-                                        "WHERE id_habitaculo=? AND estado='Activo'",
+                                                        "WHERE id_habitaculo=? AND estado='Activo'",
                                         nuevasObservaciones,
                                         id);
                         cn.commit();
                 } catch (Exception e) {
                         if (cn != null) {
-                                try { cn.rollback(); } catch (Exception ignored) { }
+                                try {
+                                        cn.rollback();
+                                } catch (Exception ignored) {
+                                }
                         }
                         if (e instanceof IllegalArgumentException) {
                                 throw (IllegalArgumentException) e;
                         }
-                        throw new RuntimeException("No se pudo guardar el motivo de inactivación: " + e.getMessage(), e);
+                        throw new RuntimeException("No se pudo guardar el motivo de inactivación: " + e.getMessage(),
+                                        e);
                 } finally {
                         if (cn != null) {
-                                try { cn.setAutoCommit(true); } catch (Exception ignored) { }
-                                try { cn.close(); } catch (Exception ignored) { }
+                                try {
+                                        cn.setAutoCommit(true);
+                                } catch (Exception ignored) {
+                                }
+                                try {
+                                        cn.close();
+                                } catch (Exception ignored) {
+                                }
                         }
                 }
         }
@@ -870,7 +931,7 @@ public class SistemaDAO {
          * - Solo considera movimientos con estado='Activo'.
          * - Suma CANTIDADES, no cantidad de registros.
          * - Un movimiento revertido queda Inactivo y vuelve a liberar
-         *   automáticamente su cantidad disponible.
+         * automáticamente su cantidad disponible.
          *
          * Resultado:
          * [0] Traslados
@@ -895,8 +956,7 @@ public class SistemaDAO {
                 int nacimientos = 0;
                 int liberaciones = 0;
 
-                String sql =
-                                "SELECT " +
+                String sql = "SELECT " +
                                 "COALESCE(SUM(CASE " +
                                 "WHEN LOWER(TRIM(m.tipo_movimiento))='traslado' " +
                                 "THEN m.cantidad ELSE 0 END),0), " +
@@ -1046,7 +1106,7 @@ public class SistemaDAO {
 
                         String animalNombreIngreso = scalar(
                                         "SELECT COALESCE(nombre_vulgar,'') " +
-                                        "FROM animales WHERE id_animal=" + animal);
+                                                        "FROM animales WHERE id_animal=" + animal);
 
                         String observacionIngreso = formatearFechaMovimiento(
                                         scalar("SELECT fecha_ingreso FROM ingresos WHERE id_ingreso=" + ingreso))
@@ -1185,26 +1245,30 @@ public class SistemaDAO {
                                 "SELECT m.id_movimiento, m.id_plantel, p.id_animal, m.cantidad, " +
                                                 "COALESCE(m.fecha_movimiento,''), COALESCE(m.destino,''), " +
                                                 "COALESCE(a.nombre_vulgar,'') " +
-                                "FROM movimientos m " +
-                                "JOIN plantel_permanente p ON p.id_plantel=m.id_plantel " +
-                                "JOIN animales a ON a.id_animal=p.id_animal " +
-                                "WHERE m.estado='Activo' AND LOWER(TRIM(m.tipo_movimiento))='traslado' " +
-                                "AND COALESCE(m.destino,'')<>'' " +
-                                "ORDER BY m.id_movimiento");
+                                                "FROM movimientos m " +
+                                                "JOIN plantel_permanente p ON p.id_plantel=m.id_plantel " +
+                                                "JOIN animales a ON a.id_animal=p.id_animal " +
+                                                "WHERE m.estado='Activo' AND LOWER(TRIM(m.tipo_movimiento))='traslado' "
+                                                +
+                                                "AND COALESCE(m.destino,'')<>'' " +
+                                                "ORDER BY m.id_movimiento");
 
                 for (Fila movimiento : movimientosPendientes) {
-                        if (movimiento.c().size() < 7) continue;
+                        if (movimiento.c().size() < 7)
+                                continue;
                         int idMovimiento = Integer.parseInt(movimiento.c().get(0));
                         int animal = Integer.parseInt(movimiento.c().get(2));
                         int cantidad = Integer.parseInt(movimiento.c().get(3));
                         String fecha = movimiento.c().get(4);
                         String destino = movimiento.c().get(5).trim();
                         String animalNombre = movimiento.c().get(6);
-                        if (cantidad <= 0 || !destinoEsInternoPlantel(destino)) continue;
+                        if (cantidad <= 0 || !destinoEsInternoPlantel(destino))
+                                continue;
                         // The new Acta flow already creates the destination row.
                         // A generic legacy destination carries no habitat and
                         // must not be guessed as a habitat transfer.
-                        if (destino.equalsIgnoreCase("Plantel Permanente")) continue;
+                        if (destino.equalsIgnoreCase("Plantel Permanente"))
+                                continue;
 
                         String tipoDestino;
                         Integer idHabitaculo = null;
@@ -1213,10 +1277,13 @@ public class SistemaDAO {
                         } else {
                                 tipoDestino = "Habitáculo";
                                 String nombreHab = extraerNombreHabitaculoDestino(destino);
-                                if (nombreHab.isBlank()) continue;
-                                String idHab = scalar("SELECT id_habitaculo FROM habitaculos WHERE LOWER(TRIM(nombre))=LOWER(TRIM('"
-                                                + nombreHab.replace("'", "''") + "')) LIMIT 1");
-                                if (idHab == null || idHab.isBlank()) continue;
+                                if (nombreHab.isBlank())
+                                        continue;
+                                String idHab = scalar(
+                                                "SELECT id_habitaculo FROM habitaculos WHERE LOWER(TRIM(nombre))=LOWER(TRIM('"
+                                                                + nombreHab.replace("'", "''") + "')) LIMIT 1");
+                                if (idHab == null || idHab.isBlank())
+                                        continue;
                                 idHabitaculo = Integer.parseInt(idHab);
                         }
 
@@ -1230,7 +1297,8 @@ public class SistemaDAO {
                                                         + tipoDestino.replace("'", "''") + "')) AND " + condicionHab
                                                         + " AND COALESCE(observaciones,'') LIKE '%"
                                                         + marca + "%' ");
-                        if (yaSincronizado != null && Integer.parseInt(yaSincronizado) > 0) continue;
+                        if (yaSincronizado != null && Integer.parseInt(yaSincronizado) > 0)
+                                continue;
 
                         String linea = formatearFechaMovimiento(fecha)
                                         + " - Traslado interno de " + cantidad + " ejemplar(es)"
@@ -1251,7 +1319,8 @@ public class SistemaDAO {
                                 agregarObservacionPlantel(idPlantelDestino, linea);
                         } else {
                                 int idPlantelDestino = update(
-                                                "INSERT INTO plantel_permanente(id_animal,cantidad,tipo_ubicacion,id_habitaculo,fecha_ingreso_plantel,estado,observaciones) " +
+                                                "INSERT INTO plantel_permanente(id_animal,cantidad,tipo_ubicacion,id_habitaculo,fecha_ingreso_plantel,estado,observaciones) "
+                                                                +
                                                                 "VALUES(?,?,?,?,?,'Activo',?)",
                                                 animal, cantidad, tipoDestino, idHabitaculo, fecha, linea);
                         }
@@ -1264,6 +1333,7 @@ public class SistemaDAO {
                         }
                 }
         }
+
         public static List<Fila> plantel(String q) {
 
                 sincronizarTrasladosInternosPendientes();
@@ -1280,31 +1350,33 @@ public class SistemaDAO {
                 return filas(
                                 "SELECT p.id_plantel, " +
                                                 "COALESCE(a.nombre_vulgar,'⚠ Sin animal asociado'), " +
-                                                "COALESCE((SELECT GROUP_CONCAT(DISTINCT i.tipo_identificacion || ': ' || i.numero_identificacion) " +
-                                                                "FROM movimientos m " +
-                                                                "JOIN detalle_ingreso d ON d.id_detalle=m.id_detalle " +
-                                                                "JOIN identificaciones i ON i.id_identificacion=d.id_identificacion " +
-                                                                "WHERE m.id_plantel=p.id_plantel AND m.estado='Activo' " +
-                                                                "AND d.estado='Activo' AND i.estado='Activo' " +
-                                                                "AND m.tipo_movimiento IN ('Traslado','Ingreso a Plantel') " +
-                                                                "AND d.id_animal=p.id_animal), 'Sin identificación'), " +
+                                                "COALESCE((SELECT GROUP_CONCAT(DISTINCT i.tipo_identificacion || ': ' || i.numero_identificacion) "
+                                                +
+                                                "FROM movimientos m " +
+                                                "JOIN detalle_ingreso d ON d.id_detalle=m.id_detalle " +
+                                                "JOIN identificaciones i ON i.id_identificacion=d.id_identificacion " +
+                                                "WHERE m.id_plantel=p.id_plantel AND m.estado='Activo' " +
+                                                "AND d.estado='Activo' AND i.estado='Activo' " +
+                                                "AND m.tipo_movimiento IN ('Traslado','Ingreso a Plantel') " +
+                                                "AND d.id_animal=p.id_animal), 'Sin identificación'), " +
                                                 "COALESCE(e.nombre,'Sin especie'), " +
                                                 "p.cantidad, " +
                                                 "COALESCE(p.tipo_ubicacion,''), " +
                                                 "COALESCE(h.nombre,''), " +
                                                 "COALESCE(p.fecha_ingreso_plantel,''), " +
                                                 "p.estado " +
-                                "FROM plantel_permanente p " +
-                                "LEFT JOIN animales a ON a.id_animal=p.id_animal " +
-                                "LEFT JOIN especies e ON e.id_especie=a.id_especie " +
-                                "LEFT JOIN habitaculos h ON h.id_habitaculo=p.id_habitaculo " +
-                                "WHERE p.estado='Activo' AND p.cantidad>0 " +
-                                "AND (COALESCE(a.nombre_vulgar,'') LIKE ? " +
-                                "OR COALESCE(e.nombre,'') LIKE ? " +
-                                "OR COALESCE(h.nombre,'') LIKE ?) " +
-                                "ORDER BY a.nombre_vulgar, p.tipo_ubicacion, h.nombre",
+                                                "FROM plantel_permanente p " +
+                                                "LEFT JOIN animales a ON a.id_animal=p.id_animal " +
+                                                "LEFT JOIN especies e ON e.id_especie=a.id_especie " +
+                                                "LEFT JOIN habitaculos h ON h.id_habitaculo=p.id_habitaculo " +
+                                                "WHERE p.estado='Activo' AND p.cantidad>0 " +
+                                                "AND (COALESCE(a.nombre_vulgar,'') LIKE ? " +
+                                                "OR COALESCE(e.nombre,'') LIKE ? " +
+                                                "OR COALESCE(h.nombre,'') LIKE ?) " +
+                                                "ORDER BY a.nombre_vulgar, p.tipo_ubicacion, h.nombre",
                                 filtro, filtro, filtro);
         }
+
         public static List<Fila> plantelInactivos(String q) {
                 return filas(
                                 "SELECT p.id_plantel,COALESCE(a.nombre_vulgar,'⚠ Sin animal asociado'),COALESCE((SELECT GROUP_CONCAT(i.tipo_identificacion || ': ' || i.numero_identificacion, ' | ') FROM identificaciones i WHERE i.id_animal=p.id_animal AND i.estado='Activo'),'Sin identificación'),COALESCE(e.nombre,'Sin especie'),p.cantidad,COALESCE(p.tipo_ubicacion,''),COALESCE(h.nombre,''),COALESCE(p.fecha_ingreso_plantel,''),p.estado FROM plantel_permanente p LEFT JOIN animales a ON a.id_animal=p.id_animal LEFT JOIN especies e ON e.id_especie=a.id_especie LEFT JOIN habitaculos h ON h.id_habitaculo=p.id_habitaculo WHERE p.estado='Inactivo' AND (COALESCE(a.nombre_vulgar,'') LIKE ? OR COALESCE(e.nombre,'') LIKE ? OR COALESCE(h.nombre,'') LIKE ? OR a.id_animal IS NULL) ORDER BY a.nombre_vulgar",
@@ -2033,7 +2105,8 @@ public class SistemaDAO {
                 int habitaculoOrigen = 0;
                 try {
                         habitaculoOrigen = Integer.parseInt(scalar(
-                                        "SELECT COALESCE(id_habitaculo,0) FROM plantel_permanente WHERE id_plantel=" + plantel));
+                                        "SELECT COALESCE(id_habitaculo,0) FROM plantel_permanente WHERE id_plantel="
+                                                        + plantel));
                 } catch (Exception ignored) {
                 }
 
@@ -2057,8 +2130,10 @@ public class SistemaDAO {
                                 && !destinoFinal.equalsIgnoreCase("Campo abierto")) {
                         String nombreDestino = extraerNombreHabitaculoDestino(destinoFinal);
                         if (!nombreDestino.isBlank()) {
-                                String idDestino = scalar("SELECT id_habitaculo FROM habitaculos WHERE LOWER(TRIM(nombre))=LOWER(TRIM('"
-                                                + nombreDestino.replace("'", "''") + "')) AND estado='Activo' LIMIT 1");
+                                String idDestino = scalar(
+                                                "SELECT id_habitaculo FROM habitaculos WHERE LOWER(TRIM(nombre))=LOWER(TRIM('"
+                                                                + nombreDestino.replace("'", "''")
+                                                                + "')) AND estado='Activo' LIMIT 1");
                                 if (idDestino != null && !idDestino.isBlank()) {
                                         idHabValidar = Integer.parseInt(idDestino);
                                 }
@@ -2074,7 +2149,8 @@ public class SistemaDAO {
                                 throw new IllegalArgumentException(
                                                 "El habitáculo seleccionado tiene capacidad para "
                                                                 + capacidadDestino + " ejemplares y ya hay "
-                                                                + ocupacionDestino + " asignados. No se puede superar la capacidad.");
+                                                                + ocupacionDestino
+                                                                + " asignados. No se puede superar la capacidad.");
                         }
                 }
 
@@ -2159,8 +2235,7 @@ public class SistemaDAO {
                 // LOS EJEMPLARES SE REGISTRAN EN EL DESTINO.
                 // ============================================================
 
-                boolean quedaEnPlantel =
-                                ubicacionDestinoSeleccionada != null || destinoEsInternoPlantel(destinoFinal);
+                boolean quedaEnPlantel = ubicacionDestinoSeleccionada != null || destinoEsInternoPlantel(destinoFinal);
 
                 if (quedaEnPlantel) {
 
@@ -2172,8 +2247,10 @@ public class SistemaDAO {
                                         tipoDestino = "Campo Abierto";
                                 } else if ("Habitáculo".equalsIgnoreCase(ubicacionDestinoSeleccionada)) {
                                         tipoDestino = "Habitáculo";
-                                        if (idHabitaculoDestinoSeleccionado == null || idHabitaculoDestinoSeleccionado <= 0) {
-                                                throw new IllegalArgumentException("Seleccioná un habitáculo de destino válido.");
+                                        if (idHabitaculoDestinoSeleccionado == null
+                                                        || idHabitaculoDestinoSeleccionado <= 0) {
+                                                throw new IllegalArgumentException(
+                                                                "Seleccioná un habitáculo de destino válido.");
                                         }
                                         habitaculoDestino = idHabitaculoDestinoSeleccionado;
                                 } else {
@@ -2393,7 +2470,8 @@ public class SistemaDAO {
                                 "SELECT " +
                                                 "m.id_movimiento," +
                                                 "COALESCE(a.nombre_vulgar,'Plantel')," +
-                                                "COALESCE(NULLIF(TRIM(i.numero_acta),''),CASE WHEN m.id_plantel IS NOT NULL THEN 'Plantel Permanente' ELSE '' END)," +
+                                                "COALESCE(NULLIF(TRIM(i.numero_acta),''),CASE WHEN m.id_plantel IS NOT NULL THEN 'Plantel Permanente' ELSE '' END),"
+                                                +
                                                 "m.fecha_movimiento," +
                                                 "m.tipo_movimiento," +
                                                 "m.cantidad," +
@@ -2427,7 +2505,8 @@ public class SistemaDAO {
 
                                                 "AND (" +
                                                 "COALESCE(a.nombre_vulgar,'') LIKE ? " +
-                                                "OR COALESCE(NULLIF(TRIM(i.numero_acta),''),CASE WHEN m.id_plantel IS NOT NULL THEN 'Plantel Permanente' ELSE '' END) LIKE ? " +
+                                                "OR COALESCE(NULLIF(TRIM(i.numero_acta),''),CASE WHEN m.id_plantel IS NOT NULL THEN 'Plantel Permanente' ELSE '' END) LIKE ? "
+                                                +
                                                 "OR m.tipo_movimiento LIKE ? " +
                                                 "OR COALESCE(m.destino,'') LIKE ?" +
                                                 ") " +
@@ -2451,7 +2530,8 @@ public class SistemaDAO {
                                 "SELECT " +
                                                 "m.id_movimiento," +
                                                 "COALESCE(a.nombre_vulgar,'Plantel')," +
-                                                "COALESCE(NULLIF(TRIM(i.numero_acta),''),CASE WHEN m.id_plantel IS NOT NULL THEN 'Plantel Permanente' ELSE '' END)," +
+                                                "COALESCE(NULLIF(TRIM(i.numero_acta),''),CASE WHEN m.id_plantel IS NOT NULL THEN 'Plantel Permanente' ELSE '' END),"
+                                                +
                                                 "m.fecha_movimiento," +
                                                 "m.tipo_movimiento," +
                                                 "m.cantidad," +
@@ -2485,7 +2565,8 @@ public class SistemaDAO {
 
                                                 "AND (" +
                                                 "COALESCE(a.nombre_vulgar,'') LIKE ? " +
-                                                "OR COALESCE(NULLIF(TRIM(i.numero_acta),''),CASE WHEN m.id_plantel IS NOT NULL THEN 'Plantel Permanente' ELSE '' END) LIKE ? " +
+                                                "OR COALESCE(NULLIF(TRIM(i.numero_acta),''),CASE WHEN m.id_plantel IS NOT NULL THEN 'Plantel Permanente' ELSE '' END) LIKE ? "
+                                                +
                                                 "OR m.tipo_movimiento LIKE ? " +
                                                 "OR COALESCE(m.destino,'') LIKE ?" +
                                                 ") " +
@@ -2506,8 +2587,8 @@ public class SistemaDAO {
                 return Integer.parseInt(
                                 scalar(
                                                 "SELECT COALESCE(id_ingreso,0) " +
-                                                "FROM detalle_ingreso " +
-                                                "WHERE id_detalle=" + detalle));
+                                                                "FROM detalle_ingreso " +
+                                                                "WHERE id_detalle=" + detalle));
         }
 
         /**
@@ -2778,8 +2859,10 @@ public class SistemaDAO {
                 if (esTraslado && vaAPlantel && idHabitaculo == null
                                 && destinoFinal.toLowerCase(java.util.Locale.ROOT).startsWith("habitáculo")) {
                         String nombreHab = extraerNombreHabitaculoDestino(destinoFinal);
-                        String idHab = scalar("SELECT id_habitaculo FROM habitaculos WHERE LOWER(TRIM(nombre))=LOWER(TRIM('"
-                                        + nombreHab.replace("'", "''") + "')) AND estado='Activo' LIMIT 1");
+                        String idHab = scalar(
+                                        "SELECT id_habitaculo FROM habitaculos WHERE LOWER(TRIM(nombre))=LOWER(TRIM('"
+                                                        + nombreHab.replace("'", "''")
+                                                        + "')) AND estado='Activo' LIMIT 1");
                         if (idHab != null && !idHab.isBlank() && !"0".equals(idHab.trim())) {
                                 idHabitaculo = Integer.parseInt(idHab);
                         }
@@ -3210,11 +3293,11 @@ public class SistemaDAO {
                 return Integer.parseInt(
                                 scalar(
                                                 "SELECT id_ingreso " +
-                                                "FROM ingresos " +
-                                                "WHERE tipo_ingreso='PLANTEL_GENERAL' " +
-                                                "AND estado='Activo' " +
-                                                "ORDER BY id_ingreso " +
-                                                "LIMIT 1"));
+                                                                "FROM ingresos " +
+                                                                "WHERE tipo_ingreso='PLANTEL_GENERAL' " +
+                                                                "AND estado='Activo' " +
+                                                                "ORDER BY id_ingreso " +
+                                                                "LIMIT 1"));
         }
 
         /**
@@ -3238,9 +3321,9 @@ public class SistemaDAO {
 
                 try (PreparedStatement ps = cn.prepareStatement(
                                 "SELECT id_ingreso FROM ingresos " +
-                                "WHERE tipo_ingreso='PLANTEL_GENERAL' " +
-                                "AND estado='Activo' " +
-                                "ORDER BY id_ingreso LIMIT 1")) {
+                                                "WHERE tipo_ingreso='PLANTEL_GENERAL' " +
+                                                "AND estado='Activo' " +
+                                                "ORDER BY id_ingreso LIMIT 1")) {
 
                         try (ResultSet rs = ps.executeQuery()) {
                                 if (rs.next()) {
@@ -3317,25 +3400,27 @@ public class SistemaDAO {
                 sincronizarTrasladosInternosPendientes();
                 return filas(
                                 "SELECT " +
-                                "p.id_plantel," +
-                                "COALESCE(a.nombre_vulgar,'')," +
-                                "COALESCE((SELECT GROUP_CONCAT(i.tipo_identificacion || ': ' || i.numero_identificacion,' | ') " +
-                                "FROM identificaciones i WHERE i.id_animal=p.id_animal AND i.estado='Activo'),'Sin identificación')," +
-                                "COALESCE(e.nombre,'Sin especie')," +
-                                "p.cantidad," +
-                                "COALESCE(p.tipo_ubicacion,'')," +
-                                "COALESCE(h.nombre,'')," +
-                                "COALESCE(p.fecha_ingreso_plantel,'')," +
-                                "p.estado " +
-                                "FROM plantel_permanente p " +
-                                "JOIN animales a ON a.id_animal=p.id_animal " +
-                                "LEFT JOIN especies e ON e.id_especie=a.id_especie " +
-                                "LEFT JOIN habitaculos h ON h.id_habitaculo=p.id_habitaculo " +
-                                "WHERE p.estado='Activo' AND p.cantidad>0 " +
-                                "AND (COALESCE(a.nombre_vulgar,'') LIKE ? " +
-                                "OR COALESCE(e.nombre,'') LIKE ? " +
-                                "OR COALESCE(h.nombre,'') LIKE ?) " +
-                                "ORDER BY a.nombre_vulgar, p.id_plantel",
+                                                "p.id_plantel," +
+                                                "COALESCE(a.nombre_vulgar,'')," +
+                                                "COALESCE((SELECT GROUP_CONCAT(i.tipo_identificacion || ': ' || i.numero_identificacion,' | ') "
+                                                +
+                                                "FROM identificaciones i WHERE i.id_animal=p.id_animal AND i.estado='Activo'),'Sin identificación'),"
+                                                +
+                                                "COALESCE(e.nombre,'Sin especie')," +
+                                                "p.cantidad," +
+                                                "COALESCE(p.tipo_ubicacion,'')," +
+                                                "COALESCE(h.nombre,'')," +
+                                                "COALESCE(p.fecha_ingreso_plantel,'')," +
+                                                "p.estado " +
+                                                "FROM plantel_permanente p " +
+                                                "JOIN animales a ON a.id_animal=p.id_animal " +
+                                                "LEFT JOIN especies e ON e.id_especie=a.id_especie " +
+                                                "LEFT JOIN habitaculos h ON h.id_habitaculo=p.id_habitaculo " +
+                                                "WHERE p.estado='Activo' AND p.cantidad>0 " +
+                                                "AND (COALESCE(a.nombre_vulgar,'') LIKE ? " +
+                                                "OR COALESCE(e.nombre,'') LIKE ? " +
+                                                "OR COALESCE(h.nombre,'') LIKE ?) " +
+                                                "ORDER BY a.nombre_vulgar, p.id_plantel",
                                 "%" + q + "%",
                                 "%" + q + "%",
                                 "%" + q + "%");
@@ -3349,22 +3434,22 @@ public class SistemaDAO {
         public static List<Fila> fallecimientosPlantel(String q) {
                 return filas(
                                 "SELECT " +
-                                "m.id_movimiento," +
-                                "m.fecha_movimiento," +
-                                "COALESCE(a.nombre_vulgar,'')," +
-                                "m.cantidad," +
-                                "COALESCE(m.sexo,'')," +
-                                "COALESCE(m.observaciones,'')," +
-                                "COALESCE(p.id_plantel,0) " +
-                                "FROM movimientos m " +
-                                "JOIN plantel_permanente p ON p.id_plantel=m.id_plantel " +
-                                "LEFT JOIN animales a ON a.id_animal=p.id_animal " +
-                                "WHERE m.estado='Activo' " +
-                                "AND m.id_plantel IS NOT NULL " +
-                                "AND m.tipo_movimiento='Fallecimiento' " +
-                                "AND (COALESCE(a.nombre_vulgar,'') LIKE ? " +
-                                "OR COALESCE(m.observaciones,'') LIKE ?) " +
-                                "ORDER BY m.fecha_movimiento DESC, m.id_movimiento DESC",
+                                                "m.id_movimiento," +
+                                                "m.fecha_movimiento," +
+                                                "COALESCE(a.nombre_vulgar,'')," +
+                                                "m.cantidad," +
+                                                "COALESCE(m.sexo,'')," +
+                                                "COALESCE(m.observaciones,'')," +
+                                                "COALESCE(p.id_plantel,0) " +
+                                                "FROM movimientos m " +
+                                                "JOIN plantel_permanente p ON p.id_plantel=m.id_plantel " +
+                                                "LEFT JOIN animales a ON a.id_animal=p.id_animal " +
+                                                "WHERE m.estado='Activo' " +
+                                                "AND m.id_plantel IS NOT NULL " +
+                                                "AND m.tipo_movimiento='Fallecimiento' " +
+                                                "AND (COALESCE(a.nombre_vulgar,'') LIKE ? " +
+                                                "OR COALESCE(m.observaciones,'') LIKE ?) " +
+                                                "ORDER BY m.fecha_movimiento DESC, m.id_movimiento DESC",
                                 "%" + q + "%",
                                 "%" + q + "%");
         }
@@ -3376,30 +3461,30 @@ public class SistemaDAO {
         public static List<Fila> trasladosPlantel(String q) {
                 return filas(
                                 "SELECT " +
-                                "m.id_movimiento," +
-                                "m.fecha_movimiento," +
-                                "COALESCE(a.nombre_vulgar,'')," +
-                                "m.cantidad," +
-                                "COALESCE(m.destino,'')," +
-                                "COALESCE(m.observaciones,'')," +
-                                "COALESCE(p.id_plantel,0) " +
-                                "FROM movimientos m " +
-                                "JOIN plantel_permanente p ON p.id_plantel=m.id_plantel " +
-                                "LEFT JOIN animales a ON a.id_animal=p.id_animal " +
-                                "WHERE m.estado='Activo' " +
-                                "AND m.id_plantel IS NOT NULL " +
-                                "AND m.tipo_movimiento='Traslado' " +
-                                "AND NOT (" +
-                                "LOWER(TRIM(COALESCE(m.destino,'')))='campo abierto' " +
-                                "OR LOWER(TRIM(COALESCE(m.destino,''))) LIKE 'habitáculo:%' " +
-                                "OR LOWER(TRIM(COALESCE(m.destino,''))) LIKE 'habitáculo ·%' " +
-                                "OR LOWER(TRIM(COALESCE(m.destino,''))) LIKE 'habitáculo -%' " +
-                                "OR LOWER(TRIM(COALESCE(m.destino,''))) LIKE 'plantel permanente%' " +
-                                ") " +
-                                "AND (COALESCE(a.nombre_vulgar,'') LIKE ? " +
-                                "OR COALESCE(m.destino,'') LIKE ? " +
-                                "OR COALESCE(m.observaciones,'') LIKE ?) " +
-                                "ORDER BY m.fecha_movimiento DESC, m.id_movimiento DESC",
+                                                "m.id_movimiento," +
+                                                "m.fecha_movimiento," +
+                                                "COALESCE(a.nombre_vulgar,'')," +
+                                                "m.cantidad," +
+                                                "COALESCE(m.destino,'')," +
+                                                "COALESCE(m.observaciones,'')," +
+                                                "COALESCE(p.id_plantel,0) " +
+                                                "FROM movimientos m " +
+                                                "JOIN plantel_permanente p ON p.id_plantel=m.id_plantel " +
+                                                "LEFT JOIN animales a ON a.id_animal=p.id_animal " +
+                                                "WHERE m.estado='Activo' " +
+                                                "AND m.id_plantel IS NOT NULL " +
+                                                "AND m.tipo_movimiento='Traslado' " +
+                                                "AND NOT (" +
+                                                "LOWER(TRIM(COALESCE(m.destino,'')))='campo abierto' " +
+                                                "OR LOWER(TRIM(COALESCE(m.destino,''))) LIKE 'habitáculo:%' " +
+                                                "OR LOWER(TRIM(COALESCE(m.destino,''))) LIKE 'habitáculo ·%' " +
+                                                "OR LOWER(TRIM(COALESCE(m.destino,''))) LIKE 'habitáculo -%' " +
+                                                "OR LOWER(TRIM(COALESCE(m.destino,''))) LIKE 'plantel permanente%' " +
+                                                ") " +
+                                                "AND (COALESCE(a.nombre_vulgar,'') LIKE ? " +
+                                                "OR COALESCE(m.destino,'') LIKE ? " +
+                                                "OR COALESCE(m.observaciones,'') LIKE ?) " +
+                                                "ORDER BY m.fecha_movimiento DESC, m.id_movimiento DESC",
                                 "%" + q + "%",
                                 "%" + q + "%",
                                 "%" + q + "%");
@@ -3630,13 +3715,16 @@ public class SistemaDAO {
                 if ("Traslado".equalsIgnoreCase(tipoFinal) && vaAPlantel && idHabitaculo == null
                                 && destinoFinal.toLowerCase(java.util.Locale.ROOT).startsWith("habitáculo")) {
                         String nombreHab = extraerNombreHabitaculoDestino(destinoFinal);
-                        String idHab = scalar("SELECT id_habitaculo FROM habitaculos WHERE LOWER(TRIM(nombre))=LOWER(TRIM('"
-                                        + nombreHab.replace("'", "''") + "')) AND estado='Activo' LIMIT 1");
+                        String idHab = scalar(
+                                        "SELECT id_habitaculo FROM habitaculos WHERE LOWER(TRIM(nombre))=LOWER(TRIM('"
+                                                        + nombreHab.replace("'", "''")
+                                                        + "')) AND estado='Activo' LIMIT 1");
                         try {
                                 if (idHab != null && !idHab.isBlank() && !"0".equals(idHab.trim())) {
                                         idHabitaculo = Integer.parseInt(idHab);
                                 }
-                        } catch (Exception ignored) { }
+                        } catch (Exception ignored) {
+                        }
                 }
 
                 if (("Traslado".equalsIgnoreCase(tipoFinal)
@@ -4191,19 +4279,26 @@ public class SistemaDAO {
                                         tipoUbicacionDestinoInterno = "Habitáculo";
                                         String nombreHab = extraerNombreHabitaculoDestino(destinoNormalizado);
                                         if (nombreHab.isBlank()) {
-                                                throw new IllegalArgumentException("Seleccioná el habitáculo de destino.");
+                                                throw new IllegalArgumentException(
+                                                                "Seleccioná el habitáculo de destino.");
                                         }
-                                        String idHab = scalar("SELECT id_habitaculo FROM habitaculos WHERE LOWER(TRIM(nombre))=LOWER(TRIM('"
-                                                        + nombreHab.replace("'", "''") + "')) AND estado='Activo' LIMIT 1");
+                                        String idHab = scalar(
+                                                        "SELECT id_habitaculo FROM habitaculos WHERE LOWER(TRIM(nombre))=LOWER(TRIM('"
+                                                                        + nombreHab.replace("'", "''")
+                                                                        + "')) AND estado='Activo' LIMIT 1");
                                         if (idHab == null || idHab.isBlank()) {
-                                                throw new IllegalArgumentException("El habitáculo de destino no existe o está inactivo.");
+                                                throw new IllegalArgumentException(
+                                                                "El habitáculo de destino no existe o está inactivo.");
                                         }
                                         habitaculoDestinoInterno = Integer.parseInt(idHab);
                                         int ocupacionDestino = ocupacionHabitaculo(habitaculoDestinoInterno, plantel);
                                         int capacidadDestino = capacidadHabitaculo(habitaculoDestinoInterno);
                                         if (capacidadDestino > 0 && ocupacionDestino + cant > capacidadDestino) {
-                                                throw new IllegalArgumentException("El habitáculo seleccionado tiene capacidad para "
-                                                                + capacidadDestino + " ejemplares y ya hay " + ocupacionDestino + " asignados.");
+                                                throw new IllegalArgumentException(
+                                                                "El habitáculo seleccionado tiene capacidad para "
+                                                                                + capacidadDestino
+                                                                                + " ejemplares y ya hay "
+                                                                                + ocupacionDestino + " asignados.");
                                         }
                                 }
                         }
@@ -4299,15 +4394,15 @@ public class SistemaDAO {
                         if (detalle != null && detalle > 0) {
                                 animalMovimiento = scalar(
                                                 "SELECT COALESCE(a.nombre_vulgar,'') " +
-                                                "FROM detalle_ingreso d " +
-                                                "JOIN animales a ON a.id_animal=d.id_animal " +
-                                                "WHERE d.id_detalle=" + detalle);
+                                                                "FROM detalle_ingreso d " +
+                                                                "JOIN animales a ON a.id_animal=d.id_animal " +
+                                                                "WHERE d.id_detalle=" + detalle);
                         } else if (plantel != null && plantel > 0) {
                                 animalMovimiento = scalar(
                                                 "SELECT COALESCE(a.nombre_vulgar,'') " +
-                                                "FROM plantel_permanente p " +
-                                                "JOIN animales a ON a.id_animal=p.id_animal " +
-                                                "WHERE p.id_plantel=" + plantel);
+                                                                "FROM plantel_permanente p " +
+                                                                "JOIN animales a ON a.id_animal=p.id_animal " +
+                                                                "WHERE p.id_plantel=" + plantel);
                         }
 
                         String observacionMovimiento = formatearFechaMovimiento(fecha) +
@@ -4318,10 +4413,12 @@ public class SistemaDAO {
                                         " ejemplar(es)" +
                                         (animalMovimiento == null || animalMovimiento.isBlank()
                                                         ? ""
-                                                        : " de " + animalMovimiento) +
+                                                        : " de " + animalMovimiento)
+                                        +
                                         (destino == null || destino.isBlank()
                                                         ? ""
-                                                        : " → " + destino) +
+                                                        : " → " + destino)
+                                        +
                                         " - Movimiento #" +
                                         nuevo;
 
@@ -4348,10 +4445,12 @@ public class SistemaDAO {
                                         }
                                         if (habitaculoDestinoInterno != null && habitaculoDestinoInterno > 0
                                                         && habitaculoDestinoInterno != habitaculoOrigen) {
-                                                actualizarObservacionHabitaculoConConexion(cn, habitaculoDestinoInterno);
+                                                actualizarObservacionHabitaculoConConexion(cn,
+                                                                habitaculoDestinoInterno);
                                         }
                                 } catch (SQLException ex) {
-                                        throw new RuntimeException("No se pudo actualizar la observación del habitáculo.", ex);
+                                        throw new RuntimeException(
+                                                        "No se pudo actualizar la observación del habitáculo.", ex);
                                 }
                         }
 
@@ -4427,22 +4526,33 @@ public class SistemaDAO {
                         } else {
                                 tipoUbicacionAnterior = "Habitáculo";
                                 String nombreHabAnterior = extraerNombreHabitaculoDestino(destinoAnterior);
-                                String idHabAnterior = nombreHabAnterior.isBlank() ? "0" : scalar(
-                                                "SELECT id_habitaculo FROM habitaculos WHERE LOWER(TRIM(nombre))=LOWER(TRIM('"
-                                                                + nombreHabAnterior.replace("'", "''")
-                                                                + "')) LIMIT 1");
-                                try { habAnterior = Integer.parseInt(idHabAnterior); } catch (Exception ignored) { }
+                                String idHabAnterior = nombreHabAnterior.isBlank() ? "0"
+                                                : scalar(
+                                                                "SELECT id_habitaculo FROM habitaculos WHERE LOWER(TRIM(nombre))=LOWER(TRIM('"
+                                                                                + nombreHabAnterior.replace("'", "''")
+                                                                                + "')) LIMIT 1");
+                                try {
+                                        habAnterior = Integer.parseInt(idHabAnterior);
+                                } catch (Exception ignored) {
+                                }
                         }
-                        if (habAnterior != null) habitaculoDestinoAnteriorEdicion = habAnterior;
+                        if (habAnterior != null)
+                                habitaculoDestinoAnteriorEdicion = habAnterior;
                         String filtroHabAnterior = habAnterior == null || habAnterior <= 0
-                                        ? "id_habitaculo IS NULL" : "id_habitaculo=" + habAnterior;
+                                        ? "id_habitaculo IS NULL"
+                                        : "id_habitaculo=" + habAnterior;
                         String idDestinoAnterior = scalar(
                                         "SELECT id_plantel FROM plantel_permanente WHERE id_animal=" + animalOrigen
                                                         + " AND id_plantel<>" + plantelAnterior
-                                                        + " AND LOWER(TRIM(tipo_ubicacion))=LOWER(TRIM('" + tipoUbicacionAnterior
-                                                        + "')) AND " + filtroHabAnterior + " ORDER BY id_plantel LIMIT 1");
-                        try { plantelDestinoAnteriorEdicion = Integer.parseInt(idDestinoAnterior); }
-                        catch (Exception ignored) { plantelDestinoAnteriorEdicion = 0; }
+                                                        + " AND LOWER(TRIM(tipo_ubicacion))=LOWER(TRIM('"
+                                                        + tipoUbicacionAnterior
+                                                        + "')) AND " + filtroHabAnterior
+                                                        + " ORDER BY id_plantel LIMIT 1");
+                        try {
+                                plantelDestinoAnteriorEdicion = Integer.parseInt(idDestinoAnterior);
+                        } catch (Exception ignored) {
+                                plantelDestinoAnteriorEdicion = 0;
+                        }
                 }
 
                 // ========================================================
@@ -4522,8 +4632,7 @@ public class SistemaDAO {
                 // NO TOCAMOS LAS OBSERVACIONES.
                 // ========================================================
 
-                String observacionEdicion =
-                                formatearFechaMovimiento(fecha) +
+                String observacionEdicion = formatearFechaMovimiento(fecha) +
                                 " - " +
                                 tipo +
                                 " de " +
@@ -4531,7 +4640,8 @@ public class SistemaDAO {
                                 " ejemplar(es)" +
                                 (destino == null || destino.isBlank()
                                                 ? ""
-                                                : " → " + destino) +
+                                                : " → " + destino)
+                                +
                                 " - Movimiento #" +
                                 id;
 
@@ -4569,8 +4679,7 @@ public class SistemaDAO {
                 // en el Acta General y se mueve de ubicación.
                 // ========================================================
 
-                boolean destinoInterno =
-                                plantel != null &&
+                boolean destinoInterno = plantel != null &&
                                 plantel > 0 &&
                                 destinoEsInternoPlantel(destino);
 
@@ -4578,10 +4687,9 @@ public class SistemaDAO {
 
                 if (destinoInterno) {
 
-                        int animalDestino =
-                                        animalAnterior > 0
-                                                        ? animalAnterior
-                                                        : animalPorPlantel(plantel);
+                        int animalDestino = animalAnterior > 0
+                                        ? animalAnterior
+                                        : animalPorPlantel(plantel);
 
                         String tipoDestino;
                         Integer habitaculoDestino = null;
@@ -4595,17 +4703,15 @@ public class SistemaDAO {
 
                                 tipoDestino = "Habitáculo";
 
-                                String nombreHabitaculo =
-                                                extraerNombreHabitaculoDestino(destino);
+                                String nombreHabitaculo = extraerNombreHabitaculoDestino(destino);
 
                                 if (nombreHabitaculo.isBlank()) {
                                         throw new IllegalArgumentException(
                                                         "No se pudo determinar el habitáculo de destino.");
                                 }
 
-                                String idHabitaculoDestino =
-                                                scalar(
-                                                                "SELECT id_habitaculo " +
+                                String idHabitaculoDestino = scalar(
+                                                "SELECT id_habitaculo " +
                                                                 "FROM habitaculos " +
                                                                 "WHERE LOWER(TRIM(nombre))=LOWER(TRIM('" +
                                                                 nombreHabitaculo.replace("'", "''") +
@@ -4621,25 +4727,23 @@ public class SistemaDAO {
                                                         "El habitáculo de destino no existe o está inactivo.");
                                 }
 
-                                habitaculoDestino =
-                                                Integer.parseInt(idHabitaculoDestino);
+                                habitaculoDestino = Integer.parseInt(idHabitaculoDestino);
                         }
 
                         if (plantelDestino == 0) {
 
-                                String condicionHabitaculo =
-                                                habitaculoDestino == null
-                                                                ? "id_habitaculo IS NULL"
-                                                                : "id_habitaculo=" +
-                                                                  habitaculoDestino;
+                                String condicionHabitaculo = habitaculoDestino == null
+                                                ? "id_habitaculo IS NULL"
+                                                : "id_habitaculo=" +
+                                                                habitaculoDestino;
 
-                                String idDestino =
-                                                scalar(
-                                                                "SELECT id_plantel " +
+                                String idDestino = scalar(
+                                                "SELECT id_plantel " +
                                                                 "FROM plantel_permanente " +
                                                                 "WHERE id_animal=" + animalDestino +
                                                                 " AND estado='Activo' " +
-                                                                "AND LOWER(TRIM(COALESCE(tipo_ubicacion,'')))=LOWER(TRIM('" +
+                                                                "AND LOWER(TRIM(COALESCE(tipo_ubicacion,'')))=LOWER(TRIM('"
+                                                                +
                                                                 tipoDestino.replace("'", "''") +
                                                                 "')) " +
                                                                 "AND " + condicionHabitaculo +
@@ -4650,8 +4754,7 @@ public class SistemaDAO {
                                                 !idDestino.isBlank() &&
                                                 !"0".equals(idDestino)) {
 
-                                        plantelDestino =
-                                                        Integer.parseInt(idDestino);
+                                        plantelDestino = Integer.parseInt(idDestino);
                                 }
                         }
 
@@ -4659,24 +4762,23 @@ public class SistemaDAO {
                         // no se debe descontar ni duplicar cantidad.
                         if (plantelDestino == 0) {
 
-                                String tipoOrigen =
-                                                scalar(
-                                                                "SELECT LOWER(TRIM(COALESCE(tipo_ubicacion,''))) " +
+                                String tipoOrigen = scalar(
+                                                "SELECT LOWER(TRIM(COALESCE(tipo_ubicacion,''))) " +
                                                                 "FROM plantel_permanente " +
                                                                 "WHERE id_plantel=" + plantel);
 
-                                String habOrigen =
-                                                scalar(
-                                                                "SELECT COALESCE(id_habitaculo,0) " +
+                                String habOrigen = scalar(
+                                                "SELECT COALESCE(id_habitaculo,0) " +
                                                                 "FROM plantel_permanente " +
                                                                 "WHERE id_plantel=" + plantel);
 
-                                boolean mismaUbicacion =
-                                                tipoOrigen.equalsIgnoreCase(
-                                                                tipoDestino.trim().toLowerCase()) &&
-                                                ((habitaculoDestino == null && ("0".equals(habOrigen) || habOrigen.isBlank()))
+                                boolean mismaUbicacion = tipoOrigen.equalsIgnoreCase(
+                                                tipoDestino.trim().toLowerCase()) &&
+                                                ((habitaculoDestino == null
+                                                                && ("0".equals(habOrigen) || habOrigen.isBlank()))
                                                                 || (habitaculoDestino != null &&
-                                                                    String.valueOf(habitaculoDestino).equals(habOrigen)));
+                                                                                String.valueOf(habitaculoDestino)
+                                                                                                .equals(habOrigen)));
 
                                 if (mismaUbicacion) {
                                         plantelDestino = plantel;
@@ -4687,14 +4789,12 @@ public class SistemaDAO {
 
                                 if (habitaculoDestino != null) {
 
-                                        int ocupacion =
-                                                        ocupacionHabitaculo(
-                                                                        habitaculoDestino,
-                                                                        plantel);
+                                        int ocupacion = ocupacionHabitaculo(
+                                                        habitaculoDestino,
+                                                        plantel);
 
-                                        int capacidad =
-                                                        capacidadHabitaculo(
-                                                                        habitaculoDestino);
+                                        int capacidad = capacidadHabitaculo(
+                                                        habitaculoDestino);
 
                                         if (plantelDestinoAnteriorEdicion > 0
                                                         && plantelDestinoAnteriorEdicion == plantelDestino) {
@@ -4717,11 +4817,13 @@ public class SistemaDAO {
                                                         reemplazarLineaMovimiento(obsDestinoAnterior, "", id),
                                                         plantelDestinoAnteriorEdicion);
                                         update("UPDATE plantel_permanente SET cantidad=MAX(cantidad-?,0),estado=CASE WHEN cantidad-?<=0 THEN 'Inactivo' ELSE 'Activo' END WHERE id_plantel=?",
-                                                        cantidadAnterior, cantidadAnterior, plantelDestinoAnteriorEdicion);
+                                                        cantidadAnterior, cantidadAnterior,
+                                                        plantelDestinoAnteriorEdicion);
                                 }
 
                                 int diferenciaOrigen = ("Traslado".equalsIgnoreCase(tipoAnteriorEdicion)
-                                                ? cantidadAnterior : 0)
+                                                ? cantidadAnterior
+                                                : 0)
                                                 - ("Traslado".equalsIgnoreCase(tipo) ? cant : 0);
                                 update(
                                                 "UPDATE plantel_permanente SET " +
@@ -4748,18 +4850,18 @@ public class SistemaDAO {
 
                                 } else {
 
-                                        plantelDestino =
-                                                        update(
-                                                                        "INSERT INTO plantel_permanente(" +
-                                                                                        "id_animal,cantidad,tipo_ubicacion,id_habitaculo," +
-                                                                                        "fecha_ingreso_plantel,estado,observaciones" +
-                                                                                        ") VALUES(?,?,?,?,?,'Activo',?)",
-                                                                        animalDestino,
-                                                                        cant,
-                                                                        tipoDestino,
-                                                                        habitaculoDestino,
-                                                                        fecha,
-                                                                        obs);
+                                        plantelDestino = update(
+                                                        "INSERT INTO plantel_permanente(" +
+                                                                        "id_animal,cantidad,tipo_ubicacion,id_habitaculo,"
+                                                                        +
+                                                                        "fecha_ingreso_plantel,estado,observaciones" +
+                                                                        ") VALUES(?,?,?,?,?,'Activo',?)",
+                                                        animalDestino,
+                                                        cant,
+                                                        tipoDestino,
+                                                        habitaculoDestino,
+                                                        fecha,
+                                                        obs);
                                 }
 
                         }
@@ -4788,7 +4890,8 @@ public class SistemaDAO {
                         int animalNuevo = animalPorPlantel(plantel);
 
                         int diferenciaOrigen = ("Traslado".equalsIgnoreCase(tipoAnteriorEdicion)
-                                        ? cantidadAnterior : 0)
+                                        ? cantidadAnterior
+                                        : 0)
                                         - ("Traslado".equalsIgnoreCase(tipo) ? cant : 0);
                         update(
                                         "UPDATE plantel_permanente SET " +
@@ -4824,13 +4927,13 @@ public class SistemaDAO {
                 if (plantel != null && plantel > 0) {
                         animalObservacion = scalar(
                                         "SELECT COALESCE(a.nombre_vulgar,'') " +
-                                        "FROM plantel_permanente p " +
-                                        "JOIN animales a ON a.id_animal=p.id_animal " +
-                                        "WHERE p.id_plantel=" + plantel);
+                                                        "FROM plantel_permanente p " +
+                                                        "JOIN animales a ON a.id_animal=p.id_animal " +
+                                                        "WHERE p.id_plantel=" + plantel);
                 } else if (animalAnterior > 0) {
                         animalObservacion = scalar(
                                         "SELECT COALESCE(nombre_vulgar,'') " +
-                                        "FROM animales WHERE id_animal=" + animalAnterior);
+                                                        "FROM animales WHERE id_animal=" + animalAnterior);
                 }
 
                 if ((plantel != null && plantel > 0) || plantelAnterior > 0) {
@@ -4865,20 +4968,29 @@ public class SistemaDAO {
                         String nuevoDestino = destino == null ? "" : destino.trim();
                         if (nuevoDestino.toLowerCase(java.util.Locale.ROOT).startsWith("habitáculo")) {
                                 String nombreHab = extraerNombreHabitaculoDestino(nuevoDestino);
-                                String idHabNuevo = nombreHab.isBlank() ? "0" : scalar(
-                                                "SELECT id_habitaculo FROM habitaculos WHERE LOWER(TRIM(nombre))=LOWER(TRIM('"
-                                                                + nombreHab.replace("'", "''") + "')) LIMIT 1");
-                                try { habitaculoDestinoEdicion = Integer.parseInt(idHabNuevo); } catch (Exception ignored) { }
+                                String idHabNuevo = nombreHab.isBlank() ? "0"
+                                                : scalar(
+                                                                "SELECT id_habitaculo FROM habitaculos WHERE LOWER(TRIM(nombre))=LOWER(TRIM('"
+                                                                                + nombreHab.replace("'", "''")
+                                                                                + "')) LIMIT 1");
+                                try {
+                                        habitaculoDestinoEdicion = Integer.parseInt(idHabNuevo);
+                                } catch (Exception ignored) {
+                                }
                         }
                 }
                 try (Connection cn = c()) {
                         int[] afectados = { habitaculoOrigenEdicion, habitaculoDestinoAnteriorEdicion,
                                         habitaculoDestinoEdicion };
                         java.util.Set<Integer> unicos = new java.util.LinkedHashSet<>();
-                        for (int habAfectado : afectados) if (habAfectado > 0) unicos.add(habAfectado);
-                        for (int habAfectado : unicos) actualizarObservacionHabitaculoConConexion(cn, habAfectado);
+                        for (int habAfectado : afectados)
+                                if (habAfectado > 0)
+                                        unicos.add(habAfectado);
+                        for (int habAfectado : unicos)
+                                actualizarObservacionHabitaculoConConexion(cn, habAfectado);
                 } catch (SQLException e) {
-                        throw new RuntimeException("No se pudieron actualizar las observaciones de los habitáculos.", e);
+                        throw new RuntimeException("No se pudieron actualizar las observaciones de los habitáculos.",
+                                        e);
                 }
 
                 return id;
@@ -5081,7 +5193,8 @@ public class SistemaDAO {
                                                 : actual.isBlank() ? observacion.trim()
                                                                 : actual + "\n" + observacion.trim());
 
-                if (nueva.equals(actual)) return;
+                if (nueva.equals(actual))
+                        return;
 
                 updateConConexion(
                                 cn,
@@ -5110,7 +5223,8 @@ public class SistemaDAO {
                                                 : textoActual.isBlank() ? observacion.trim()
                                                                 : textoActual + "\n" + observacion.trim());
 
-                if (nueva.equals(textoActual)) return;
+                if (nueva.equals(textoActual))
+                        return;
 
                 update(
                                 "UPDATE plantel_permanente SET observaciones=? WHERE id_plantel=?",
@@ -5286,23 +5400,29 @@ public class SistemaDAO {
          * cada movimiento conserva una sola línea vigente por su ID.
          */
         private static void sincronizarObservacionesMovimientos() {
-                if (observacionesMovimientosSincronizadas) return;
+                if (observacionesMovimientosSincronizadas)
+                        return;
                 synchronized (SistemaDAO.class) {
-                        if (observacionesMovimientosSincronizadas) return;
+                        if (observacionesMovimientosSincronizadas)
+                                return;
 
                         List<Fila> movimientos = filas(
-                                "SELECT m.id_movimiento,COALESCE(d.id_ingreso,0),COALESCE(m.id_plantel,0)," +
-                                                "COALESCE(m.fecha_movimiento,''),COALESCE(m.tipo_movimiento,'')," +
-                                                "COALESCE(m.cantidad,0),COALESCE(a.nombre_vulgar,''),COALESCE(m.destino,'') " +
-                                "FROM movimientos m " +
-                                "LEFT JOIN detalle_ingreso d ON d.id_detalle=m.id_detalle " +
-                                "LEFT JOIN plantel_permanente p ON p.id_plantel=m.id_plantel " +
-                                "LEFT JOIN animales a ON a.id_animal=COALESCE(d.id_animal,p.id_animal) " +
-                                "ORDER BY m.id_movimiento");
+                                        "SELECT m.id_movimiento,COALESCE(d.id_ingreso,0),COALESCE(m.id_plantel,0)," +
+                                                        "COALESCE(m.fecha_movimiento,''),COALESCE(m.tipo_movimiento,''),"
+                                                        +
+                                                        "COALESCE(m.cantidad,0),COALESCE(a.nombre_vulgar,''),COALESCE(m.destino,'') "
+                                                        +
+                                                        "FROM movimientos m " +
+                                                        "LEFT JOIN detalle_ingreso d ON d.id_detalle=m.id_detalle " +
+                                                        "LEFT JOIN plantel_permanente p ON p.id_plantel=m.id_plantel " +
+                                                        "LEFT JOIN animales a ON a.id_animal=COALESCE(d.id_animal,p.id_animal) "
+                                                        +
+                                                        "ORDER BY m.id_movimiento");
 
                         for (Fila fila : movimientos) {
                                 List<String> celdas = fila.c();
-                                if (celdas.size() < 8) continue;
+                                if (celdas.size() < 8)
+                                        continue;
 
                                 int idMovimiento = enteroSeguro(celdas.get(0));
                                 int idIngreso = enteroSeguro(celdas.get(1));
@@ -5312,15 +5432,18 @@ public class SistemaDAO {
                                 int cantidad = enteroSeguro(celdas.get(5));
                                 String animal = celdas.get(6);
                                 String destino = celdas.get(7);
-                                if (idMovimiento <= 0 || cantidad <= 0) continue;
+                                if (idMovimiento <= 0 || cantidad <= 0)
+                                        continue;
 
-                                String linea = observacionMovimiento(fecha, tipo, cantidad, animal, destino, idMovimiento);
+                                String linea = observacionMovimiento(fecha, tipo, cantidad, animal, destino,
+                                                idMovimiento);
                                 if (idIngreso > 0) {
                                         agregarObservacionActa(idIngreso, linea);
                                 }
                                 if (idPlantel > 0) {
                                         agregarObservacionPlantel(idPlantel, linea);
-                                        agregarObservacionActaGeneral(idMovimiento, fecha, tipo, cantidad, animal, destino);
+                                        agregarObservacionActaGeneral(idMovimiento, fecha, tipo, cantidad, animal,
+                                                        destino);
                                 }
                         }
                         observacionesMovimientosSincronizadas = true;
@@ -5345,26 +5468,32 @@ public class SistemaDAO {
                                 " - Movimiento #" + idMovimiento;
         }
 
-        /** Sustituye solamente la línea del movimiento indicado y conserva el resto del historial. */
+        /**
+         * Sustituye solamente la línea del movimiento indicado y conserva el resto del
+         * historial.
+         */
         private static String reemplazarLineaMovimiento(String actual, String nuevaLinea, int idMovimiento) {
                 String texto = actual == null ? "" : actual;
                 String patron = "(?i).*\\bMovimiento\\s*#\\s*" + idMovimiento + "\\b.*";
                 StringBuilder resultado = new StringBuilder();
                 for (String linea : texto.split("\\R")) {
                         if (!linea.matches(patron) && !linea.isBlank()) {
-                                if (resultado.length() > 0) resultado.append("\n");
+                                if (resultado.length() > 0)
+                                        resultado.append("\n");
                                 resultado.append(linea);
                         }
                 }
                 if (nuevaLinea != null && !nuevaLinea.isBlank()) {
-                        if (resultado.length() > 0) resultado.append("\n");
+                        if (resultado.length() > 0)
+                                resultado.append("\n");
                         resultado.append(nuevaLinea.trim());
                 }
                 return resultado.toString();
         }
 
         private static int idMovimientoEnObservacion(String observacion) {
-                if (observacion == null) return 0;
+                if (observacion == null)
+                        return 0;
                 java.util.regex.Matcher matcher = java.util.regex.Pattern
                                 .compile("(?i)\\bMovimiento\\s*#\\s*(\\d+)")
                                 .matcher(observacion);
@@ -5409,7 +5538,8 @@ public class SistemaDAO {
                                 ? reemplazarLineaMovimiento(actual, observacion, idMovimiento)
                                 : (actual.contains(observacion) ? actual
                                                 : actual.isBlank() ? observacion : actual + "\n" + observacion);
-                if (nuevo.equals(actual)) return;
+                if (nuevo.equals(actual))
+                        return;
 
                 updateConConexion(
                                 cn,
@@ -5580,7 +5710,8 @@ public class SistemaDAO {
                                 : (actual.contains(nueva) ? actual
                                                 : actual.isBlank() ? nueva : actual + "\n" + nueva);
 
-                if (resultado.equals(actual)) return;
+                if (resultado.equals(actual))
+                        return;
 
                 updateConConexion(
                                 cn,
@@ -5736,9 +5867,12 @@ public class SistemaDAO {
         }
 
         private static void agregarObservacionHabitaculo(int idHabitaculo, String linea) {
-                if (idHabitaculo <= 0 || linea == null || linea.isBlank()) return;
-                String actual = scalar("SELECT COALESCE(observaciones,'') FROM habitaculos WHERE id_habitaculo=" + idHabitaculo);
-                if (actual == null || actual.isBlank() || "0".equals(actual) || "Disponible.".equalsIgnoreCase(actual.trim())) {
+                if (idHabitaculo <= 0 || linea == null || linea.isBlank())
+                        return;
+                String actual = scalar("SELECT COALESCE(observaciones,'') FROM habitaculos WHERE id_habitaculo="
+                                + idHabitaculo);
+                if (actual == null || actual.isBlank() || "0".equals(actual)
+                                || "Disponible.".equalsIgnoreCase(actual.trim())) {
                         actual = linea.trim();
                 } else {
                         actual = actual.trim() + "\n" + linea.trim();
@@ -5747,8 +5881,10 @@ public class SistemaDAO {
         }
 
         private static void agregarObservacionNacimientoHabitaculo(int idHabitaculo, String linea) {
-                if (idHabitaculo <= 0 || linea == null || linea.isBlank()) return;
-                String actual = scalar("SELECT COALESCE(observaciones,'') FROM habitaculos WHERE id_habitaculo=" + idHabitaculo);
+                if (idHabitaculo <= 0 || linea == null || linea.isBlank())
+                        return;
+                String actual = scalar("SELECT COALESCE(observaciones,'') FROM habitaculos WHERE id_habitaculo="
+                                + idHabitaculo);
                 if (actual == null || actual.isBlank() || "Disponible.".equalsIgnoreCase(actual.trim())) {
                         actual = linea.trim();
                 } else {
@@ -5757,14 +5893,18 @@ public class SistemaDAO {
                 update("UPDATE habitaculos SET observaciones=? WHERE id_habitaculo=?", actual, idHabitaculo);
         }
 
-        private static void actualizarObservacionHabitaculoConConexion(Connection cn, int idHabitaculo) throws SQLException {
-                if (idHabitaculo <= 0) return;
+        private static void actualizarObservacionHabitaculoConConexion(Connection cn, int idHabitaculo)
+                        throws SQLException {
+                if (idHabitaculo <= 0)
+                        return;
                 String nombre = "";
                 String anteriores = "";
-                try (PreparedStatement ps = cn.prepareStatement("SELECT COALESCE(nombre,''),COALESCE(observaciones,'') FROM habitaculos WHERE id_habitaculo=?")) {
+                try (PreparedStatement ps = cn.prepareStatement(
+                                "SELECT COALESCE(nombre,''),COALESCE(observaciones,'') FROM habitaculos WHERE id_habitaculo=?")) {
                         ps.setInt(1, idHabitaculo);
                         try (ResultSet rs = ps.executeQuery()) {
-                                if (!rs.next()) return;
+                                if (!rs.next())
+                                        return;
                                 nombre = rs.getString(1);
                                 anteriores = rs.getString(2);
                         }
@@ -5772,7 +5912,8 @@ public class SistemaDAO {
 
                 List<String> notas = new ArrayList<>();
                 String destinoLike = "%" + nombre.toLowerCase(java.util.Locale.ROOT) + "%";
-                try (PreparedStatement ps = cn.prepareStatement("SELECT p.id_plantel,p.id_animal,p.cantidad,COALESCE(a.nombre_vulgar,'') FROM plantel_permanente p JOIN animales a ON a.id_animal=p.id_animal WHERE p.id_habitaculo=? AND p.estado='Activo' AND p.cantidad>0 ORDER BY p.id_plantel")) {
+                try (PreparedStatement ps = cn.prepareStatement(
+                                "SELECT p.id_plantel,p.id_animal,p.cantidad,COALESCE(a.nombre_vulgar,'') FROM plantel_permanente p JOIN animales a ON a.id_animal=p.id_animal WHERE p.id_habitaculo=? AND p.estado='Activo' AND p.cantidad>0 ORDER BY p.id_plantel")) {
                         ps.setInt(1, idHabitaculo);
                         try (ResultSet rs = ps.executeQuery()) {
                                 while (rs.next()) {
@@ -5781,26 +5922,40 @@ public class SistemaDAO {
                                         List<String> eventos = new ArrayList<>();
                                         List<Integer> ids = new ArrayList<>(), cantidades = new ArrayList<>();
                                         List<String> fechas = new ArrayList<>(), tipos = new ArrayList<>();
-                                        String sqlEntradas = "SELECT m.id_movimiento,m.fecha_movimiento,m.tipo_movimiento,m.cantidad " +
-                                                        "FROM movimientos m LEFT JOIN plantel_permanente origen ON origen.id_plantel=m.id_plantel " +
+                                        String sqlEntradas = "SELECT m.id_movimiento,m.fecha_movimiento,m.tipo_movimiento,m.cantidad "
+                                                        +
+                                                        "FROM movimientos m LEFT JOIN plantel_permanente origen ON origen.id_plantel=m.id_plantel "
+                                                        +
                                                         "LEFT JOIN detalle_ingreso d ON d.id_detalle=m.id_detalle " +
-                                                        "WHERE m.estado='Activo' AND COALESCE(origen.id_animal,d.id_animal)=? AND (" +
-                                                        "((LOWER(m.tipo_movimiento) LIKE '%ingreso%' OR LOWER(m.tipo_movimiento) LIKE '%nacimiento%') AND m.id_plantel=?) OR " +
-                                                        "(LOWER(m.tipo_movimiento)='traslado' AND LOWER(COALESCE(m.destino,'')) LIKE ?)) " +
+                                                        "WHERE m.estado='Activo' AND COALESCE(origen.id_animal,d.id_animal)=? AND ("
+                                                        +
+                                                        "((LOWER(m.tipo_movimiento) LIKE '%ingreso%' OR LOWER(m.tipo_movimiento) LIKE '%nacimiento%') AND m.id_plantel=?) OR "
+                                                        +
+                                                        "(LOWER(m.tipo_movimiento)='traslado' AND LOWER(COALESCE(m.destino,'')) LIKE ?)) "
+                                                        +
                                                         "ORDER BY m.id_movimiento";
                                         try (PreparedStatement pe = cn.prepareStatement(sqlEntradas)) {
-                                                pe.setInt(1, animal); pe.setInt(2, plantel); pe.setString(3, destinoLike);
+                                                pe.setInt(1, animal);
+                                                pe.setInt(2, plantel);
+                                                pe.setString(3, destinoLike);
                                                 try (ResultSet re = pe.executeQuery()) {
                                                         while (re.next()) {
-                                                                ids.add(re.getInt(1)); fechas.add(re.getString(2)); tipos.add(re.getString(3)); cantidades.add(re.getInt(4));
+                                                                ids.add(re.getInt(1));
+                                                                fechas.add(re.getString(2));
+                                                                tipos.add(re.getString(3));
+                                                                cantidades.add(re.getInt(4));
                                                         }
                                                 }
                                         }
                                         int salidas = 0;
                                         String sqlSalidas = "SELECT COALESCE(SUM(m.cantidad),0) FROM movimientos m WHERE m.id_plantel=? AND m.estado='Activo' AND (LOWER(m.tipo_movimiento) LIKE '%fallecimiento%' OR LOWER(m.tipo_movimiento) LIKE '%liberación%' OR (LOWER(m.tipo_movimiento)='traslado' AND LOWER(COALESCE(m.destino,'')) NOT LIKE ?))";
                                         try (PreparedStatement psOut = cn.prepareStatement(sqlSalidas)) {
-                                                psOut.setInt(1, plantel); psOut.setString(2, destinoLike);
-                                                try (ResultSet ro = psOut.executeQuery()) { if (ro.next()) salidas = ro.getInt(1); }
+                                                psOut.setInt(1, plantel);
+                                                psOut.setString(2, destinoLike);
+                                                try (ResultSet ro = psOut.executeQuery()) {
+                                                        if (ro.next())
+                                                                salidas = ro.getInt(1);
+                                                }
                                         }
                                         for (int i = cantidades.size() - 1; i >= 0 && salidas > 0; i--) {
                                                 int descuento = Math.min(salidas, cantidades.get(i));
@@ -5809,26 +5964,39 @@ public class SistemaDAO {
                                         }
                                         int suma = cantidades.stream().mapToInt(Integer::intValue).sum();
                                         int diferencia = ocupacion - suma;
-                                        if (diferencia > 0 && !cantidades.isEmpty()) cantidades.set(cantidades.size()-1, cantidades.get(cantidades.size()-1) + diferencia);
+                                        if (diferencia > 0 && !cantidades.isEmpty())
+                                                cantidades.set(cantidades.size() - 1,
+                                                                cantidades.get(cantidades.size() - 1) + diferencia);
                                         if (diferencia < 0) {
                                                 int quitar = -diferencia;
-                                                for (int i = cantidades.size()-1; i >= 0 && quitar > 0; i--) {
-                                                        int d = Math.min(quitar, cantidades.get(i)); cantidades.set(i, cantidades.get(i)-d); quitar -= d;
+                                                for (int i = cantidades.size() - 1; i >= 0 && quitar > 0; i--) {
+                                                        int d = Math.min(quitar, cantidades.get(i));
+                                                        cantidades.set(i, cantidades.get(i) - d);
+                                                        quitar -= d;
                                                 }
                                         }
                                         for (int i = 0; i < ids.size(); i++) {
-                                                if (cantidades.get(i) > 0) notas.add(formatearFechaMovimiento(fechas.get(i)) + " - " + tipos.get(i) + " de " + cantidades.get(i) + " ejemplar(es) de " + nombreAnimal + " - Movimiento #" + ids.get(i));
+                                                if (cantidades.get(i) > 0)
+                                                        notas.add(formatearFechaMovimiento(fechas.get(i)) + " - "
+                                                                        + tipos.get(i) + " de " + cantidades.get(i)
+                                                                        + " ejemplar(es) de " + nombreAnimal
+                                                                        + " - Movimiento #" + ids.get(i));
                                         }
                                 }
                         }
                 }
                 // Conservar texto manual y descartar líneas automáticas viejas.
-                if (anteriores != null) for (String linea : anteriores.split("\\R")) {
-                        String t = linea.trim();
-                        if (!t.isBlank() && !t.equalsIgnoreCase("Disponible.") && !t.matches(".*Movimiento #[0-9]+.*")) notas.add(t);
-                }
-                updateConConexion(cn, "UPDATE habitaculos SET observaciones=? WHERE id_habitaculo=?", String.join("\n", notas), idHabitaculo);
+                if (anteriores != null)
+                        for (String linea : anteriores.split("\\R")) {
+                                String t = linea.trim();
+                                if (!t.isBlank() && !t.equalsIgnoreCase("Disponible.")
+                                                && !t.matches(".*Movimiento #[0-9]+.*"))
+                                        notas.add(t);
+                        }
+                updateConConexion(cn, "UPDATE habitaculos SET observaciones=? WHERE id_habitaculo=?",
+                                String.join("\n", notas), idHabitaculo);
         }
+
         // USUARIOS
         public static List<Fila> usuarios(String q) {
                 return filas(
@@ -5888,10 +6056,10 @@ public class SistemaDAO {
                                                 "LEFT JOIN animales a ON a.id_animal=i.id_animal " +
                                                 "WHERE i.estado='Activo' " +
                                                 "AND EXISTS (" +
-                                                        "SELECT 1 FROM plantel_permanente p " +
-                                                        "WHERE p.id_animal=i.id_animal " +
-                                                        "AND p.estado='Activo' " +
-                                                        "AND COALESCE(p.cantidad,0)>0" +
+                                                "SELECT 1 FROM plantel_permanente p " +
+                                                "WHERE p.id_animal=i.id_animal " +
+                                                "AND p.estado='Activo' " +
+                                                "AND COALESCE(p.cantidad,0)>0" +
                                                 ") " +
                                                 "ORDER BY a.nombre_vulgar,i.tipo_identificacion,i.numero_identificacion");
         }
@@ -6132,7 +6300,8 @@ public class SistemaDAO {
                                         hab,
                                         formatearFechaMovimiento(fecha) + " - NACIMIENTO: "
                                                         + cant + " ejemplar(es) de " + animalNombre
-                                                        + (sexo == null || sexo.isBlank() ? "" : " (" + sexo.trim() + ")")
+                                                        + (sexo == null || sexo.isBlank() ? ""
+                                                                        : " (" + sexo.trim() + ")")
                                                         + (obs == null || obs.isBlank() ? "" : " - " + obs.trim()));
                         try (Connection cn = c()) {
                                 actualizarObservacionHabitaculoConConexion(cn, hab);
@@ -6159,7 +6328,8 @@ public class SistemaDAO {
                 int habitaculoAntes = 0;
                 try {
                         habitaculoAntes = Integer.parseInt(scalar(
-                                        "SELECT COALESCE(id_habitaculo,0) FROM plantel_permanente WHERE id_plantel=" + plantel));
+                                        "SELECT COALESCE(id_habitaculo,0) FROM plantel_permanente WHERE id_plantel="
+                                                        + plantel));
                 } catch (Exception ignored) {
                 }
 
@@ -6238,7 +6408,8 @@ public class SistemaDAO {
                                                 "COALESCE(h.nombre,'') " +
                                                 "FROM movimientos m " +
                                                 "LEFT JOIN plantel_permanente p ON p.id_plantel=m.id_plantel " +
-                                                "LEFT JOIN animales a ON a.id_animal=COALESCE(p.id_animal,(SELECT d.id_animal FROM detalle_ingreso d WHERE d.id_detalle=m.id_detalle)) " +
+                                                "LEFT JOIN animales a ON a.id_animal=COALESCE(p.id_animal,(SELECT d.id_animal FROM detalle_ingreso d WHERE d.id_detalle=m.id_detalle)) "
+                                                +
                                                 "LEFT JOIN habitaculos h ON h.id_habitaculo=p.id_habitaculo " +
                                                 "WHERE m.estado='Activo' " +
                                                 "AND LOWER(TRIM(m.tipo_movimiento))=LOWER(TRIM(?)) " +
@@ -6252,13 +6423,18 @@ public class SistemaDAO {
                         return new ArrayList<>();
                 }
                 return filas(
-                                "SELECT m.id_movimiento,m.fecha_movimiento,COALESCE(a.nombre_vulgar,''),m.cantidad,COALESCE(m.sexo,''),COALESCE(m.destino,''),COALESCE(m.observaciones,''),COALESCE(p.tipo_ubicacion,''),COALESCE(h.nombre,'') " +
-                                "FROM movimientos m LEFT JOIN plantel_permanente p ON p.id_plantel=m.id_plantel " +
-                                "LEFT JOIN animales a ON a.id_animal=COALESCE(p.id_animal,(SELECT d.id_animal FROM detalle_ingreso d WHERE d.id_detalle=m.id_detalle)) " +
-                                "LEFT JOIN habitaculos h ON h.id_habitaculo=p.id_habitaculo " +
-                                "WHERE m.estado='Activo' AND LOWER(TRIM(m.tipo_movimiento))=LOWER(TRIM(?)) " +
-                                "AND m.id_plantel IS NOT NULL AND date(m.fecha_movimiento)>=date(?) AND date(m.fecha_movimiento)<=date(?) " +
-                                "ORDER BY m.fecha_movimiento DESC,m.id_movimiento DESC",
+                                "SELECT m.id_movimiento,m.fecha_movimiento,COALESCE(a.nombre_vulgar,''),m.cantidad,COALESCE(m.sexo,''),COALESCE(m.destino,''),COALESCE(m.observaciones,''),COALESCE(p.tipo_ubicacion,''),COALESCE(h.nombre,'') "
+                                                +
+                                                "FROM movimientos m LEFT JOIN plantel_permanente p ON p.id_plantel=m.id_plantel "
+                                                +
+                                                "LEFT JOIN animales a ON a.id_animal=COALESCE(p.id_animal,(SELECT d.id_animal FROM detalle_ingreso d WHERE d.id_detalle=m.id_detalle)) "
+                                                +
+                                                "LEFT JOIN habitaculos h ON h.id_habitaculo=p.id_habitaculo " +
+                                                "WHERE m.estado='Activo' AND LOWER(TRIM(m.tipo_movimiento))=LOWER(TRIM(?)) "
+                                                +
+                                                "AND m.id_plantel IS NOT NULL AND date(m.fecha_movimiento)>=date(?) AND date(m.fecha_movimiento)<=date(?) "
+                                                +
+                                                "ORDER BY m.fecha_movimiento DESC,m.id_movimiento DESC",
                                 tipo.trim(), desde, hasta);
         }
 
@@ -6277,7 +6453,8 @@ public class SistemaDAO {
         }
 
         public static int actasActivas() {
-                return Integer.parseInt(scalar("SELECT COUNT(*) FROM ingresos WHERE estado='Activo' AND COALESCE(tipo_ingreso,'INDIVIDUAL')='INDIVIDUAL'"));
+                return Integer.parseInt(scalar(
+                                "SELECT COUNT(*) FROM ingresos WHERE estado='Activo' AND COALESCE(tipo_ingreso,'INDIVIDUAL')='INDIVIDUAL'"));
         }
 
         public static int habitaculosActivos() {
@@ -6346,9 +6523,11 @@ public class SistemaDAO {
 
         public static List<Fila> reportePlantelMensual(String desde, String hasta) {
                 return filas(
-                                "SELECT p.id_plantel,a.nombre_vulgar,COALESCE(a.nombre_cientifico,''),COALESCE(e.nombre,''),'Sin clasificar','Autóctonos',p.cantidad,COALESCE(h.nombre,''),COALESCE(p.tipo_ubicacion,''),COALESCE(p.fecha_ingreso_plantel,''),COALESCE(p.observaciones,''),COALESCE(a.origen,'') " +
-                                "FROM plantel_permanente p JOIN animales a ON a.id_animal=p.id_animal LEFT JOIN especies e ON e.id_especie=a.id_especie LEFT JOIN habitaculos h ON h.id_habitaculo=p.id_habitaculo " +
-                                "WHERE p.estado='Activo' AND p.cantidad>0 AND date(p.fecha_ingreso_plantel)>=date(?) AND date(p.fecha_ingreso_plantel)<=date(?) ORDER BY e.nombre,a.nombre_vulgar",
+                                "SELECT p.id_plantel,a.nombre_vulgar,COALESCE(a.nombre_cientifico,''),COALESCE(e.nombre,''),'Sin clasificar','Autóctonos',p.cantidad,COALESCE(h.nombre,''),COALESCE(p.tipo_ubicacion,''),COALESCE(p.fecha_ingreso_plantel,''),COALESCE(p.observaciones,''),COALESCE(a.origen,'') "
+                                                +
+                                                "FROM plantel_permanente p JOIN animales a ON a.id_animal=p.id_animal LEFT JOIN especies e ON e.id_especie=a.id_especie LEFT JOIN habitaculos h ON h.id_habitaculo=p.id_habitaculo "
+                                                +
+                                                "WHERE p.estado='Activo' AND p.cantidad>0 AND date(p.fecha_ingreso_plantel)>=date(?) AND date(p.fecha_ingreso_plantel)<=date(?) ORDER BY e.nombre,a.nombre_vulgar",
                                 desde, hasta);
         }
 
@@ -6359,9 +6538,9 @@ public class SistemaDAO {
          *
          * Regla de presentación:
          * - cada identificación activa representa un ejemplar individual y se
-         *   muestra en una fila propia;
+         * muestra en una fila propia;
          * - los ejemplares sin identificación se agrupan en una única fila por
-         *   animal;
+         * animal;
          * - nunca se inventa una identificación ni se modifica el animal.
          */
         public static List<Fila> animalesPorUbicacion(String q, String filtro) {
@@ -6483,14 +6662,17 @@ public class SistemaDAO {
 
                 return filas(
                                 "SELECT a.id_animal,a.nombre_vulgar,COALESCE(e.nombre,'')," +
-                                "COALESCE(a.nombre_cientifico,''),COALESCE(a.origen,'')," +
-                                plantel + "," + actas + "," +
-                                "COALESCE((SELECT group_concat(x.identificacion,' · ') FROM (" +
-                                "SELECT DISTINCT i.tipo_identificacion || ': ' || i.numero_identificacion AS identificacion " +
-                                "FROM identificaciones i WHERE i.id_animal=a.id_animal AND i.estado='Activo' " +
-                                "ORDER BY i.tipo_identificacion,i.numero_identificacion) x),'Sin identificación'),a.estado " +
-                                "FROM animales a LEFT JOIN especies e ON e.id_especie=a.id_especie " +
-                                "WHERE a.id_animal=?",
+                                                "COALESCE(a.nombre_cientifico,''),COALESCE(a.origen,'')," +
+                                                plantel + "," + actas + "," +
+                                                "COALESCE((SELECT group_concat(x.identificacion,' · ') FROM (" +
+                                                "SELECT DISTINCT i.tipo_identificacion || ': ' || i.numero_identificacion AS identificacion "
+                                                +
+                                                "FROM identificaciones i WHERE i.id_animal=a.id_animal AND i.estado='Activo' "
+                                                +
+                                                "ORDER BY i.tipo_identificacion,i.numero_identificacion) x),'Sin identificación'),a.estado "
+                                                +
+                                                "FROM animales a LEFT JOIN especies e ON e.id_especie=a.id_especie " +
+                                                "WHERE a.id_animal=?",
                                 String.valueOf(idAnimal))
                                 .stream()
                                 .findFirst()

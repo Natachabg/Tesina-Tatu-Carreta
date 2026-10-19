@@ -327,7 +327,7 @@ public class VistaMovimientos extends VistaCRUD {
                 String observacionesIniciales = "";
 
                 final int cantidadInicial;
-                final int ingresoInicial;
+                int ingresoInicial;
 
                 if (movimiento != null) {
 
@@ -370,6 +370,22 @@ public class VistaMovimientos extends VistaCRUD {
                         ingresoInicial = SistemaDAO.ingresoDeMovimiento(
                                         movimiento.id());
 
+                        // Respaldo: si el movimiento tiene un detalle de acta,
+                        // recuperar el ingreso directamente desde ese detalle.
+                        // Esto evita tratarlo como movimiento directo de plantel
+                        // cuando la consulta principal no devuelve el acta.
+                        if (ingresoInicial <= 0 && detalleInicial > 0) {
+                                try {
+                                        ingresoInicial = Integer.parseInt(
+                                                        SistemaDAO.scalar(
+                                                                        "SELECT COALESCE(id_ingreso,0) " +
+                                                                        "FROM detalle_ingreso " +
+                                                                        "WHERE id_detalle=" + detalleInicial));
+                                } catch (Exception ignored) {
+                                        ingresoInicial = 0;
+                                }
+                        }
+
                 } else {
 
                         cantidadInicial = 0;
@@ -394,10 +410,13 @@ public class VistaMovimientos extends VistaCRUD {
 
                 if (modoEdicion && ingresoInicial > 0) {
 
-                        boolean existeActa = acta.getItems()
-                                        .stream()
-                                        .anyMatch(
-                                                        x -> x.id() == ingresoInicial);
+                        boolean existeActa = false;
+                        for (SistemaDAO.Opcion opcion : acta.getItems()) {
+                                if (opcion.id() == ingresoInicial) {
+                                        existeActa = true;
+                                        break;
+                                }
+                        }
 
                         if (!existeActa) {
 
@@ -1137,6 +1156,10 @@ public class VistaMovimientos extends VistaCRUD {
                         animal.getItems().setAll(
                                         detallePlantel);
 
+                        // Mantiene la presentación del animal igual que en
+                        // los movimientos asociados a un acta.
+                        configurarComboAnimales(animal);
+
                         animal.setValue(
                                         detallePlantel);
                 }
@@ -1840,12 +1863,25 @@ public class VistaMovimientos extends VistaCRUD {
                 // INICIALIZAR ACTA
                 // --------------------------------------------------------
 
-                if (acta.getValue() != null) {
+                if (modoEdicion && ingresoInicial > 0) {
+                        // Seleccionar el acta una vez instalado el listener para
+                        // que también se cargue automáticamente su detalle animal.
+                        SistemaDAO.Opcion actaInicial = null;
+                        for (SistemaDAO.Opcion opcion : acta.getItems()) {
+                                if (opcion.id() == ingresoInicial) {
+                                        actaInicial = opcion;
+                                        break;
+                                }
+                        }
 
+                        if (actaInicial != null) {
+                                acta.setValue(null);
+                                acta.getSelectionModel().select(actaInicial);
+                        }
+                } else if (acta.getValue() != null) {
                         SistemaDAO.Opcion actaInicial = acta.getValue();
-
                         acta.setValue(null);
-                        acta.setValue(actaInicial);
+                        acta.getSelectionModel().select(actaInicial);
                 }
 
                 mostrarModal(
